@@ -10,6 +10,7 @@
     "test": "tsx test/simulation.ts"
   },
   "devDependencies": {
+    "@types/node": "^22.20.2",
     "partykit": "^0.0.111",
     "tsx": "^4.23.13",
     "typescript": "^5.5.4"
