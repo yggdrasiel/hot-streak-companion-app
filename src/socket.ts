@@ -61,6 +61,12 @@ export function connectToRoom(roomCode: string, playerName?: string, isPlayingHo
     socket = null;
   }
 
+  const urlParams = new URLSearchParams(window.location.search);
+  const paramHost = urlParams.get("server") || urlParams.get("host");
+  if (paramHost) {
+    localStorage.setItem("hot_streak_party_host", paramHost);
+  }
+
   const host = localStorage.getItem("hot_streak_party_host") || DEFAULT_PARTYKIT_HOST;
 
   socket = new PartySocket({
