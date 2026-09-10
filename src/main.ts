@@ -260,7 +260,7 @@ function init() {
       ];
 
       const SUBTITLES_4TH = (name: string) => [
-        `${name} crumbled into 4th place! Prepare for the penalty!`,
+        `${name} crumbled into 4th place! Sucks don't it!`,
         `${name} ran out of gas completely! Ticket headed for the shredder!`,
         `A heartbreaking last-place finish for ${name}! Ouch!`,
         `${name} takes the wooden spoon. Your bankroll takes a hit!`,
@@ -666,9 +666,8 @@ async function renderLobbyScreen(state: GameState) {
       </div>
 
       <!-- Host Settings (if Host) -->
-      ${
-        isHost
-          ? `
+      ${isHost
+      ? `
         <div class="card">
           <h3 style="font-size: 1.1rem; color: var(--color-gold);">⚙️ Game Configuration</h3>
 
@@ -683,11 +682,10 @@ async function renderLobbyScreen(state: GameState) {
               </button>
             </div>
             <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
-              ${
-                state.mode === "classic"
-                  ? "Turn-based snake draft of 2 tickets per player with limited ticket stacks."
-                  : "Simultaneous picks: 1 mascot & 1 side bet. Payouts split the 4 race pots!"
-              }
+              ${state.mode === "classic"
+        ? "Turn-based snake draft of 2 tickets per player with limited ticket stacks."
+        : "Simultaneous picks: 1 mascot & 1 side bet. Payouts split the 4 race pots!"
+      }
             </p>
           </div>
 
@@ -720,7 +718,7 @@ async function renderLobbyScreen(state: GameState) {
           </div>
         </div>
       `
-          : `
+      : `
         <div class="card" style="text-align: center; padding: 24px;">
           <div style="font-size: 1.8rem; margin-bottom: 8px;">⏳</div>
           <h3>Waiting for Host to Start...</h3>
@@ -729,7 +727,7 @@ async function renderLobbyScreen(state: GameState) {
           </p>
         </div>
       `
-      }
+    }
 
       <!-- Players List -->
       <div class="card">
@@ -745,16 +743,15 @@ async function renderLobbyScreen(state: GameState) {
       </div>
     </main>
 
-    ${
-      isHost
-        ? `
+    ${isHost
+      ? `
       <div class="host-action-bar">
         <button id="btn-start-game" class="btn btn-green btn-full">
           🚀 Start Game
         </button>
       </div>
     `
-        : ""
+      : ""
     }
   `;
 
@@ -869,13 +866,12 @@ function renderBettingScreen(state: GameState) {
     contentHtml = `
       <!-- Draft Order Indicator -->
       <div class="turn-banner ${isMyTurn ? "my-turn" : ""}">
-        ${
-          isMyTurn
-            ? `<div style="font-size: 1.2rem; font-weight: 800; color: var(--color-gold);">🎯 IT IS YOUR TURN TO DRAFT!</div>
+        ${isMyTurn
+        ? `<div style="font-size: 1.2rem; font-weight: 800; color: var(--color-gold);">🎯 IT IS YOUR TURN TO DRAFT!</div>
                <div style="font-size: 0.85rem; color: var(--text-primary);">Pick a Mascot or Side Bet below (${myBetsCount + 1}/2)</div>`
-            : `<div style="font-size: 1rem; font-weight: 700;">Waiting for <strong>${currentDrafter?.name || "Player"}</strong> to draft...</div>
+        : `<div style="font-size: 1rem; font-weight: 700;">Waiting for <strong>${currentDrafter?.name || "Player"}</strong> to draft...</div>
                <div style="font-size: 0.8rem; color: var(--text-secondary);">Turn ${state.currentDraftIndex + 1} of ${state.draftOrder.length}</div>`
-        }
+      }
       </div>
 
       <!-- Player's Drafted Tickets Summary -->
@@ -884,22 +880,20 @@ function renderBettingScreen(state: GameState) {
           <h3 style="font-size: 0.95rem;">Your Drafted Tickets (${myBetsCount}/2)</h3>
           ${isFinalRace && myBetsCount === 2 ? '<span class="badge badge-ready">Tap ticket to set 2x</span>' : ""}
         </div>
-        ${
-          isFinalRace && myBetsCount === 2
-            ? `
+        ${isFinalRace && myBetsCount === 2
+        ? `
           <div style="font-size: 0.75rem; color: var(--color-gold); margin-bottom: 8px;">
             🔥 Final Race: Exactly one bet is doubled. Tap either ticket below to choose!
           </div>
         `
-            : ""
-        }
+        : ""
+      }
         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-          ${
-            myBets.length === 0
-              ? '<span style="color: var(--text-muted); font-size: 0.85rem;">No tickets drafted yet this race.</span>'
-              : myBets
-                  .map(
-                    (b, idx) => `
+          ${myBets.length === 0
+        ? '<span style="color: var(--text-muted); font-size: 0.85rem;">No tickets drafted yet this race.</span>'
+        : myBets
+          .map(
+            (b, idx) => `
               <div
                 class="drafted-ticket-chip ${isFinalRace && myBets.length === 2 ? "clickable-double" : ""}"
                 data-ticket-idx="${idx}"
@@ -914,9 +908,9 @@ function renderBettingScreen(state: GameState) {
                 </div>
               </div>
             `
-                  )
-                  .join("")
-          }
+          )
+          .join("")
+      }
         </div>
       </div>
 
@@ -949,10 +943,10 @@ function renderBettingScreen(state: GameState) {
         <h3 style="font-size: 1.1rem; color: var(--color-gold);">1. Choose 1 Mascot</h3>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
           ${(["gobbler", "hurley", "dangle", "mum"] as MascotId[])
-            .map((m) => {
-              const cfg = MASCOT_CONFIG[m];
-              const isSel = openMascotBet?.mascotId === m;
-              return `
+        .map((m) => {
+          const cfg = MASCOT_CONFIG[m];
+          const isSel = openMascotBet?.mascotId === m;
+          return `
                 <button
                   class="btn ${isSel ? "btn-primary" : "btn-secondary"}"
                   data-open-mascot="${m}"
@@ -962,8 +956,8 @@ function renderBettingScreen(state: GameState) {
                   <span style="font-size: 0.85rem;">${cfg.name}</span>
                 </button>
               `;
-            })
-            .join("")}
+        })
+        .join("")}
         </div>
       </div>
 
@@ -987,9 +981,8 @@ function renderBettingScreen(state: GameState) {
         </div>
       </div>
 
-      ${
-        isFinalRace
-          ? `
+      ${isFinalRace
+        ? `
         <div class="card" style="border: 1px solid var(--color-gold);">
           <div style="font-size: 0.85rem; font-weight: 800; color: var(--color-gold); text-transform: uppercase; margin-bottom: 4px;">
             🔥 Final Race: Choose Bet to Double Down (2x)
@@ -1017,7 +1010,7 @@ function renderBettingScreen(state: GameState) {
           </div>
         </div>
       `
-          : ""
+        : ""
       }
 
       <button id="btn-submit-open-bets" class="btn btn-green btn-full" ${openMascotBet && openSideBet ? "" : "disabled"}>
@@ -1043,32 +1036,31 @@ function renderBettingScreen(state: GameState) {
         <h4 style="font-size: 0.85rem; color: var(--text-secondary);">RACER STATUS</h4>
         <div class="player-list">
           ${Object.values(state.players)
-            .filter((p) => p.connected && (!p.isHost || p.isPlayingHost))
-            .map((p) => {
-              const isLocked = isClassic ? p.currentBets.length === 2 : p.currentBets.length === 2;
-              return `
+      .filter((p) => p.connected && (!p.isHost || p.isPlayingHost))
+      .map((p) => {
+        const isLocked = isClassic ? p.currentBets.length === 2 : p.currentBets.length === 2;
+        return `
                 <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; font-size: 0.85rem;">
                   <span>${p.name} ${p.id === sessionId ? "(You)" : ""}</span>
                   <span>${isLocked ? "✅ Locked" : isClassic ? `${p.currentBets.length}/2 Drafted` : "⏳ Picking"}</span>
                 </div>
               `;
-            })
-            .join("")}
+      })
+      .join("")}
         </div>
       </div>
     </main>
 
     <!-- Host Floating Controls -->
-    ${
-      isHost
-        ? `
+    ${isHost
+      ? `
       <div class="host-action-bar">
         <button id="btn-force-start-race" class="btn btn-secondary btn-full" style="font-size: 0.85rem;">
           🏎️ Force Advance to Race
         </button>
       </div>
     `
-        : ""
+      : ""
     }
 
     <!-- Bottom Sheet Modal for Ticket Selection (Safe vs Risky) -->
@@ -1394,17 +1386,17 @@ function openDraftModal(state: GameState, category: MascotId | "yes" | "no") {
 
     const bet: Bet = isMascot
       ? {
-          type: "mascot",
-          mascotId: category as MascotId,
-          isRisky: selectedRisky,
-          isDoubled,
-        }
+        type: "mascot",
+        mascotId: category as MascotId,
+        isRisky: selectedRisky,
+        isDoubled,
+      }
       : {
-          type: "side",
-          answer: category as "yes" | "no",
-          isRisky: selectedRisky,
-          isDoubled,
-        };
+        type: "side",
+        answer: category as "yes" | "no",
+        isRisky: selectedRisky,
+        isDoubled,
+      };
 
     sendMessage({
       type: "SUBMIT_BET",
@@ -1469,32 +1461,29 @@ function renderRaceInputScreen(state: GameState) {
         </div>
 
         <div class="podium-mascot-content">
-          ${
-            mascot
-              ? `
+          ${mascot
+        ? `
             <div class="mascot-avatar">${mascot.icon}</div>
             <div class="mascot-name-tag">
               <strong>${mascot.name}</strong>
               <span>${mascot.desc}</span>
             </div>
           `
-              : `
+        : `
             <div class="slot-empty-notice">
-              ${
-                isHost
-                  ? selectedMascotForHostPlacement
-                    ? `👉 Tap here to assign <strong>${MASCOT_CONFIG[selectedMascotForHostPlacement].name}</strong>`
-                    : `<span>⚪ Empty Slot (Select racer below)</span>`
-                  : `<span>⏳ Waiting for finish placement...</span>`
-              }
+              ${isHost
+          ? selectedMascotForHostPlacement
+            ? `👉 Tap here to assign <strong>${MASCOT_CONFIG[selectedMascotForHostPlacement].name}</strong>`
+            : `<span>⚪ Empty Slot (Select racer below)</span>`
+          : `<span>⏳ Waiting for finish placement...</span>`
+        }
             </div>
           `
-          }
+      }
         </div>
 
-        ${
-          isHost && assigned
-            ? `
+        ${isHost && assigned
+        ? `
           <button
             class="btn-slot-remove"
             data-remove-pos="${pos}"
@@ -1503,8 +1492,8 @@ function renderRaceInputScreen(state: GameState) {
             ✕
           </button>
         `
-            : ""
-        }
+        : ""
+      }
       </div>
     `;
   };
@@ -1519,18 +1508,16 @@ function renderRaceInputScreen(state: GameState) {
       <div class="hero-box" style="padding-bottom: 0;">
         <h2 style="font-size: 1.8rem;">🏁 THE RACE IS ON!</h2>
         <p class="hero-subtitle">
-          ${
-            isHost
-              ? "Assign finishes as cards are flipped on the table."
-              : "Watch the board live as the dealer flips cards!"
-          }
+          ${isHost
+      ? "Assign finishes as cards are flipped on the table."
+      : "Watch the board live as the dealer flips cards!"
+    }
         </p>
       </div>
 
       <!-- Player Bets Reminder (if participating) -->
-      ${
-        myBets.length > 0
-          ? `
+      ${myBets.length > 0
+      ? `
         <div class="card" style="padding: 12px 14px; ${isFinalRace ? "border: 1px solid var(--color-gold);" : ""}">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
             <div style="font-size: 0.75rem; font-weight: 800; color: var(--color-gold); text-transform: uppercase; letter-spacing: 0.05em;">
@@ -1540,16 +1527,16 @@ function renderRaceInputScreen(state: GameState) {
           </div>
           <div style="display: flex; flex-direction: column; gap: 8px;">
             ${myBets
-              .map((b, idx) => {
-                const doubleBadge = b.isDoubled
-                  ? '<span class="badge" style="background: var(--color-gold); color: #000; font-weight: 900; font-size: 0.7rem; margin-left: 6px;">🔥 2X DOUBLED</span>'
-                  : canSwitchDouble
-                  ? `<button class="btn btn-secondary btn-switch-double" data-switch-idx="${idx}" style="padding: 2px 8px; font-size: 0.7rem; min-height: unset; margin-left: 6px; font-weight: 700;">Tap to 2x</button>`
-                  : "";
+        .map((b, idx) => {
+          const doubleBadge = b.isDoubled
+            ? '<span class="badge" style="background: var(--color-gold); color: #000; font-weight: 900; font-size: 0.7rem; margin-left: 6px;">🔥 2X DOUBLED</span>'
+            : canSwitchDouble
+              ? `<button class="btn btn-secondary btn-switch-double" data-switch-idx="${idx}" style="padding: 2px 8px; font-size: 0.7rem; min-height: unset; margin-left: 6px; font-weight: 700;">Tap to 2x</button>`
+              : "";
 
-                if (b.type === "mascot") {
-                  const m = MASCOT_CONFIG[b.mascotId];
-                  return `
+          if (b.type === "mascot") {
+            const m = MASCOT_CONFIG[b.mascotId];
+            return `
                     <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem;">
                       <div style="display: flex; align-items: center;">
                         <span>${m.icon}</span> <strong style="margin-left: 4px;">${m.name}</strong>
@@ -1561,13 +1548,13 @@ function renderRaceInputScreen(state: GameState) {
                       <span style="font-size: 0.8rem; color: var(--text-muted);">Goal: 1st-3rd</span>
                     </div>
                   `;
-                } else {
-                  const sideWon =
-                    state.sideBetOccurred !== null &&
-                    ((b.answer === "yes" && state.sideBetOccurred === true) ||
-                      (b.answer === "no" && state.sideBetOccurred === false));
+          } else {
+            const sideWon =
+              state.sideBetOccurred !== null &&
+              ((b.answer === "yes" && state.sideBetOccurred === true) ||
+                (b.answer === "no" && state.sideBetOccurred === false));
 
-                  return `
+            return `
                     <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem;">
                       <div style="display: flex; align-items: center;">
                         <span>🎲</span> <strong style="margin-left: 4px;">Side Bet: ${b.answer.toUpperCase()}</strong>
@@ -1577,24 +1564,23 @@ function renderRaceInputScreen(state: GameState) {
                         ${doubleBadge}
                       </div>
                       <span style="font-size: 0.8rem; font-weight: 800;">
-                        ${
-                          state.sideBetOccurred === null
-                            ? `<span style="color: var(--text-muted);">Awaiting flip</span>`
-                            : sideWon
-                            ? `<span style="color: var(--color-green);">💰 WON!</span>`
-                            : `<span style="color: var(--color-red);">💀 BUSTED!</span>`
-                        }
+                        ${state.sideBetOccurred === null
+                ? `<span style="color: var(--text-muted);">Awaiting flip</span>`
+                : sideWon
+                  ? `<span style="color: var(--color-green);">💰 WON!</span>`
+                  : `<span style="color: var(--color-red);">💀 BUSTED!</span>`
+              }
                       </span>
                     </div>
                   `;
-                }
-              })
-              .join("")}
+          }
+        })
+        .join("")}
           </div>
         </div>
       `
-          : ""
-      }
+      : ""
+    }
 
       <!-- Live Finish Slots Board -->
       <div class="card">
@@ -1613,29 +1599,27 @@ function renderRaceInputScreen(state: GameState) {
       </div>
 
       <!-- Host Mascot Roster (Tap-to-Assign) -->
-      ${
-        isHost
-          ? `
+      ${isHost
+      ? `
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
             <h3 style="font-size: 1.05rem; color: var(--color-gold);">Select Racer to Place</h3>
             <span style="font-size: 0.75rem; color: var(--text-muted);">
-              ${
-                selectedMascotForHostPlacement
-                  ? `👉 Selected: ${MASCOT_CONFIG[selectedMascotForHostPlacement].name}`
-                  : "Tap a mascot to select"
-              }
+              ${selectedMascotForHostPlacement
+        ? `👉 Selected: ${MASCOT_CONFIG[selectedMascotForHostPlacement].name}`
+        : "Tap a mascot to select"
+      }
             </span>
           </div>
           <div class="roster-grid">
             ${(["gobbler", "hurley", "dangle", "mum"] as MascotId[])
-              .map((m) => {
-                const placedPos = placedMap[m];
-                const isPlaced = placedPos !== undefined;
-                const isSelected = selectedMascotForHostPlacement === m;
-                const config = MASCOT_CONFIG[m];
+        .map((m) => {
+          const placedPos = placedMap[m];
+          const isPlaced = placedPos !== undefined;
+          const isSelected = selectedMascotForHostPlacement === m;
+          const config = MASCOT_CONFIG[m];
 
-                return `
+          return `
                   <div
                     class="roster-card ${m} ${isSelected ? "selected" : ""} ${isPlaced ? "placed" : ""}"
                     data-roster-mascot="${m}"
@@ -1650,13 +1634,13 @@ function renderRaceInputScreen(state: GameState) {
                     ${isPlaced ? `<span class="roster-badge">#${placedPos}</span>` : ""}
                   </div>
                 `;
-              })
-              .join("")}
+        })
+        .join("")}
           </div>
         </div>
       `
-          : ""
-      }
+      : ""
+    }
 
       <!-- Live Side Bet Status -->
       <div class="card">
@@ -1665,9 +1649,8 @@ function renderRaceInputScreen(state: GameState) {
           <div style="flex: 1; font-weight: 700; font-size: 0.95rem;">
             Did the side bet scenario occur?
           </div>
-          ${
-            isHost
-              ? `
+          ${isHost
+      ? `
             <div style="display: flex; gap: 8px;">
               <button
                 id="btn-side-yes"
@@ -1685,48 +1668,44 @@ function renderRaceInputScreen(state: GameState) {
               </button>
             </div>
           `
-              : `
-            <span class="badge ${
-              state.sideBetOccurred === true
-                ? "badge-ready"
-                : state.sideBetOccurred === false
-                ? "badge-host"
-                : ""
-            }" style="font-size: 0.95rem; font-weight: 800; padding: 6px 14px;">
-              ${
-                state.sideBetOccurred === null
-                  ? "⏳ AWAITING OUTCOME..."
-                  : state.sideBetOccurred
-                  ? "💥 IT HAPPENED! (YES)"
-                  : "🛑 DID NOT HAPPEN (NO)"
-              }
+      : `
+            <span class="badge ${state.sideBetOccurred === true
+        ? "badge-ready"
+        : state.sideBetOccurred === false
+          ? "badge-host"
+          : ""
+      }" style="font-size: 0.95rem; font-weight: 800; padding: 6px 14px;">
+              ${state.sideBetOccurred === null
+        ? "⏳ AWAITING OUTCOME..."
+        : state.sideBetOccurred
+          ? "💥 IT HAPPENED! (YES)"
+          : "🛑 DID NOT HAPPEN (NO)"
+      }
             </span>
           `
-          }
+    }
         </div>
       </div>
     </main>
 
-    ${
-      isHost
-        ? `
+    ${isHost
+      ? `
       <div class="host-action-bar">
         <button
           id="btn-finalize-race"
           class="btn btn-green btn-full"
           ${canFinalize ? "" : "disabled"}
         >
-          ${
-            canFinalize
-              ? "💰 Finalize Race & Calculate Payouts"
-              : !allPositionsPlaced
-              ? `⏳ Place All 4 Racers (${Object.keys(placements).length}/4)`
-              : "⏳ Toggle Side Bet (YES/NO)"
-          }
+          ${canFinalize
+        ? "💰 Finalize Race & Calculate Payouts"
+        : !allPositionsPlaced
+          ? `⏳ Place All 4 Racers (${Object.keys(placements).length}/4)`
+          : "⏳ Toggle Side Bet (YES/NO)"
+      }
         </button>
       </div>
     `
-        : ""
+      : ""
     }
   `;
 
@@ -1883,9 +1862,9 @@ function renderRaceResultsScreen(state: GameState) {
         <h3 style="font-size: 1.05rem; color: var(--color-gold);">🏆 Standings</h3>
         <div class="player-list">
           ${sortedPlayers
-            .map((p, idx) => {
-              const change = lastRace?.payouts[p.id] ?? 0;
-              return `
+      .map((p, idx) => {
+        const change = lastRace?.payouts[p.id] ?? 0;
+        return `
                 <div class="player-item">
                   <div class="player-info">
                     <span style="font-weight: 800; width: 20px;">#${idx + 1}</span>
@@ -1899,22 +1878,21 @@ function renderRaceResultsScreen(state: GameState) {
                   </div>
                 </div>
               `;
-            })
-            .join("")}
+      })
+      .join("")}
         </div>
       </div>
     </main>
 
-    ${
-      isHost
-        ? `
+    ${isHost
+      ? `
       <div class="host-action-bar">
         <button id="btn-next-race" class="btn btn-primary btn-full">
           ➡️ Next Race (${state.currentRace + 1}/${state.totalRaces})
         </button>
       </div>
     `
-        : ""
+      : ""
     }
   `;
 
@@ -1962,8 +1940,8 @@ function renderGameOverScreen(state: GameState) {
         <h3 style="font-size: 1.05rem;">Final Bankrolls</h3>
         <div class="player-list">
           ${sorted
-            .map(
-              (p, idx) => `
+      .map(
+        (p, idx) => `
             <div class="player-item">
               <div class="player-info">
                 <span style="font-weight: 800; width: 22px;">#${idx + 1}</span>
@@ -1972,22 +1950,21 @@ function renderGameOverScreen(state: GameState) {
               <span class="score-badge">$${p.score}</span>
             </div>
           `
-            )
-            .join("")}
+      )
+      .join("")}
         </div>
       </div>
     </main>
 
-    ${
-      isHost
-        ? `
+    ${isHost
+      ? `
       <div class="host-action-bar">
         <button id="btn-restart-game" class="btn btn-secondary btn-full">
           🔄 Play Again (Reset Lobby)
         </button>
       </div>
     `
-        : ""
+      : ""
     }
   `;
 

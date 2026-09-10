@@ -52,9 +52,9 @@ async function runTest() {
 
   console.log("Total players in lobby:", Object.keys(server.state.players).length);
 
-  // 3. Host starts game
+  // 3. Host starts game (deterministic for test calculations)
   await server.onMessage(
-    JSON.stringify({ type: "HOST_START_GAME" }),
+    JSON.stringify({ type: "HOST_START_GAME", payload: { randomizeOrder: false } }),
     p1 as any
   );
 
@@ -641,9 +641,52 @@ async function runOpenModeTest() {
   console.log("✅ Open mode double down test passed successfully!");
 }
 
+async function runRandomizationTest() {
+  console.log("\n=== Testing Initial Draft Order Randomization ===");
+  const distinctFirstDrafters = new Set<string>();
+
+  for (let i = 0; i < 30; i++) {
+    const room = new MockRoom();
+    const server = new HotStreakServer(room as any);
+
+    const p1 = new MockConnection("p1");
+    const p2 = new MockConnection("p2");
+    const p3 = new MockConnection("p3");
+    const p4 = new MockConnection("p4");
+
+    await server.onConnect(p1 as any, { request: { url: "http://localhost:1999/party/test?sessionId=p1" } } as any);
+    await server.onConnect(p2 as any, { request: { url: "http://localhost:1999/party/test?sessionId=p2" } } as any);
+    await server.onConnect(p3 as any, { request: { url: "http://localhost:1999/party/test?sessionId=p3" } } as any);
+    await server.onConnect(p4 as any, { request: { url: "http://localhost:1999/party/test?sessionId=p4" } } as any);
+
+    // Host starts game without payload -> default is randomized!
+    await server.onMessage(JSON.stringify({ type: "HOST_START_GAME" }), p1 as any);
+
+    const firstDrafter = server.state.draftOrder[0];
+    distinctFirstDrafters.add(firstDrafter);
+
+    // Verify snake draft structure: length is 8 (4 * 2) and second half mirrors first half
+    if (server.state.draftOrder.length !== 8) {
+      throw new Error(`Expected draftOrder length 8, got ${server.state.draftOrder.length}`);
+    }
+    const forward = server.state.draftOrder.slice(0, 4);
+    const reverse = server.state.draftOrder.slice(4).reverse();
+    if (JSON.stringify(forward) !== JSON.stringify(reverse)) {
+      throw new Error(`Snake draft symmetry mismatch: ${JSON.stringify(forward)} vs ${JSON.stringify(reverse)}`);
+    }
+  }
+
+  console.log(`Distinct first drafters observed across 30 runs:`, Array.from(distinctFirstDrafters));
+  if (distinctFirstDrafters.size < 2) {
+    throw new Error("Draft order was not randomized: same player picked first every time!");
+  }
+  console.log("✅ Initial draft order randomization verified successfully!");
+}
+
 async function main() {
   await runTest();
   await runOpenModeTest();
+  await runRandomizationTest();
   console.log("\n🎉 ALL TESTS AND SUITES PASSED SUCCESSFULLY!");
 }
 

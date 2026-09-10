@@ -155,7 +155,7 @@ export type ClientMessage =
       };
     }
   | { type: "SET_READY"; payload: { isReady: boolean } }
-  | { type: "HOST_START_GAME" }
+  | { type: "HOST_START_GAME"; payload?: { randomizeOrder?: boolean } }
   | { type: "SUBMIT_BET"; payload: { bet: Bet } }
   | {
       type: "LIVE_PLACE_RACER";
@@ -341,7 +341,11 @@ export default class HotStreakServer implements Party.Server {
         break;
 
       case "HOST_START_GAME":
-        this.handleHostStartGame(sender, senderId);
+        this.handleHostStartGame(
+          sender,
+          senderId,
+          parsed.payload?.randomizeOrder ?? true
+        );
         break;
 
       case "SUBMIT_BET":
@@ -445,7 +449,11 @@ export default class HotStreakServer implements Party.Server {
     }
   }
 
-  private handleHostStartGame(sender: Party.Connection, senderId: string) {
+  private handleHostStartGame(
+    sender: Party.Connection,
+    senderId: string,
+    randomizeOrder: boolean = true
+  ) {
     if (!this.assertHost(sender, senderId)) return;
 
     // Filter active playing participants
@@ -469,7 +477,15 @@ export default class HotStreakServer implements Party.Server {
       return;
     }
 
-    this.basePlayerOrder = activePlayers.map((p) => p.id);
+    const order = activePlayers.map((p) => p.id);
+    if (randomizeOrder) {
+      // Fisher-Yates shuffle for randomized initial draft order
+      for (let i = order.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [order[i], order[j]] = [order[j], order[i]];
+      }
+    }
+    this.basePlayerOrder = order;
     this.startBettingPhase();
   }
 
