@@ -3,16 +3,26 @@
   "version": "1.0.0",
   "description": "Companion app for Hot Streak board game with PartyKit backend",
   "private": true,
+  "type": "module",
   "scripts": {
-    "dev": "partykit dev",
-    "deploy": "partykit deploy",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "server": "partykit dev",
+    "server:deploy": "partykit deploy",
     "typecheck": "tsc --noEmit",
     "test": "tsx test/simulation.ts"
   },
   "devDependencies": {
     "@types/node": "^22.20.2",
+    "@types/qrcode": "^1.5.6",
     "partykit": "^0.0.111",
     "tsx": "^4.23.13",
-    "typescript": "^5.5.4"
+    "typescript": "^5.5.4",
+    "vite": "^8.2.2"
+  },
+  "dependencies": {
+    "partysocket": "^1.3.0",
+    "qrcode": "^1.5.4"
   }
 }
