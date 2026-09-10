@@ -1,0 +1,15 @@
+{
+  "name": "hot-streak-companion-app",
+  "version": "1.0.0",
+  "description": "Companion app for Hot Streak board game with PartyKit backend",
+  "private": true,
+  "scripts": {
+    "dev": "partykit dev",
+    "deploy": "partykit deploy",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "partykit": "^0.0.111",
+    "typescript": "^5.5.4"
+  }
+}
