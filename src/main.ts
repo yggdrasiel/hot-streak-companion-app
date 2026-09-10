@@ -621,6 +621,17 @@ async function renderLobbyScreen(state: GameState) {
     console.error("QR Error", e);
   }
 
+  const activePlayers = Object.values(state.players).filter((p) => {
+    if (!p.connected) return false;
+    if (p.isHost && !p.isPlayingHost) return false;
+    return true;
+  });
+  const activeCount = activePlayers.length;
+  const isClassic = state.mode === "classic";
+  const isTooFew = activeCount < 3;
+  const isTooMany = isClassic && activeCount > 9;
+  const canStart = !isTooFew && !isTooMany;
+
   const playersListHtml = Object.values(state.players)
     .map(
       (p) => `
@@ -675,16 +686,16 @@ async function renderLobbyScreen(state: GameState) {
             <label class="input-label">Game Mode</label>
             <div style="display: flex; gap: 8px;">
               <button id="mode-classic" class="btn ${state.mode === "classic" ? "btn-primary" : "btn-secondary"}" style="flex: 1;">
-                Classic Draft
+                Classic Draft (3-9)
               </button>
               <button id="mode-open" class="btn ${state.mode === "open" ? "btn-primary" : "btn-secondary"}" style="flex: 1;">
-                Open Track
+                Open Track (3+)
               </button>
             </div>
             <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
               ${state.mode === "classic"
-        ? "Turn-based snake draft of 2 tickets per player with limited ticket stacks."
-        : "Simultaneous picks: 1 mascot & 1 side bet. Payouts split the 4 race pots!"
+        ? "Turn-based snake draft of 2 tickets per player (strictly 3 to 9 players, 18 tickets total)."
+        : "Simultaneous picks: 1 mascot & 1 side bet. Payouts split the 4 race pots (3+ players, no limit)."
       }
             </p>
           </div>
@@ -723,7 +734,7 @@ async function renderLobbyScreen(state: GameState) {
           <div style="font-size: 1.8rem; margin-bottom: 8px;">⏳</div>
           <h3>Waiting for Host to Start...</h3>
           <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 4px;">
-            Mode: <strong>${state.mode === "classic" ? "Classic Snake Draft" : "Open Track"}</strong> (${state.totalRaces} Races)
+            Mode: <strong>${state.mode === "classic" ? "Classic Snake Draft (3-9 players)" : "Open Track (3+ players)"}</strong> (${state.totalRaces} Races)
           </p>
         </div>
       `
@@ -733,11 +744,21 @@ async function renderLobbyScreen(state: GameState) {
       <div class="card">
         <div style="display:flex; justify-content:space-between; align-items:center;">
           <h3 style="font-size: 1.05rem;">Joined Players</h3>
-          <span style="font-size: 0.85rem; color: var(--text-secondary);">
-            ${Object.values(state.players).length} racers
+          <span style="font-size: 0.85rem; color: ${isTooFew ? "var(--color-gold)" : isTooMany ? "#ef4444" : "var(--text-secondary)"}; font-weight: 700;">
+            ${activeCount} active racer${activeCount === 1 ? "" : "s"} ${isClassic ? "(3–9)" : "(3+)"}
           </span>
         </div>
-        <div class="player-list">
+        ${isTooFew
+          ? `<div style="font-size: 0.8rem; color: var(--color-gold); margin-top: 6px; padding: 6px 10px; background: rgba(251, 133, 0, 0.12); border-radius: var(--radius-sm); border: 1px solid rgba(251, 133, 0, 0.3);">
+              ⚠️ Need at least 3 players to start (${activeCount}/3 joined).
+            </div>`
+          : isTooMany
+          ? `<div style="font-size: 0.8rem; color: #fca5a5; margin-top: 6px; padding: 6px 10px; background: rgba(239, 68, 68, 0.15); border-radius: var(--radius-sm); border: 1px solid rgba(239, 68, 68, 0.4);">
+              ⛔ Classic Draft allows max 9 players (18 tickets). Switch to Open Track or have extra racers spectate.
+            </div>`
+          : ""
+        }
+        <div class="player-list" style="margin-top: 8px;">
           ${playersListHtml}
         </div>
       </div>
@@ -746,8 +767,8 @@ async function renderLobbyScreen(state: GameState) {
     ${isHost
       ? `
       <div class="host-action-bar">
-        <button id="btn-start-game" class="btn btn-green btn-full">
-          🚀 Start Game
+        <button id="btn-start-game" class="btn ${canStart ? "btn-green" : "btn-secondary"} btn-full" ${!canStart ? "style='opacity: 0.65; cursor: not-allowed;'" : ""}>
+          ${isTooFew ? `Waiting for Racers (${activeCount}/3 min)` : isTooMany ? "Classic Max 9 Players Exceeded" : "🚀 Start Game"}
         </button>
       </div>
     `
@@ -794,6 +815,14 @@ async function renderLobbyScreen(state: GameState) {
     });
 
     document.getElementById("btn-start-game")?.addEventListener("click", () => {
+      if (isTooFew) {
+        alert("Hot Streak requires at least 3 active players to start. (2-player variant is not currently supported).");
+        return;
+      }
+      if (isTooMany) {
+        alert("Classic mode is strictly limited to 9 players (18 tickets total). Please switch to Open Track mode or set additional racers to spectate.");
+        return;
+      }
       sendMessage({ type: "HOST_START_GAME" });
     });
   }

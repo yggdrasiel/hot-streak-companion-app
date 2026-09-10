@@ -463,16 +463,20 @@ export default class HotStreakServer implements Party.Server {
       return true;
     });
 
-    if (activePlayers.length < 1) {
-      this.sendError(sender, "Need at least 1 participating player to start.");
+    // Hot Streak requires at least 3 participating players (2-player variant not supported for now)
+    if (activePlayers.length < 3) {
+      this.sendError(
+        sender,
+        "Hot Streak requires at least 3 participating players to start (2-player variant is not currently supported)."
+      );
       return;
     }
 
-    // Classic mode recommendation: 3-9 players (or 2-player variant)
-    if (this.state.mode === "classic" && activePlayers.length < 2) {
+    // Classic mode is strictly limited to 9 players (18 tickets max: 9 players * 2 bets)
+    if (this.state.mode === "classic" && activePlayers.length > 9) {
       this.sendError(
         sender,
-        "Classic mode requires at least 2 players for drafting."
+        "Classic mode is strictly limited to 9 players (18 tickets total). Please switch to Open Track mode for 10+ players."
       );
       return;
     }

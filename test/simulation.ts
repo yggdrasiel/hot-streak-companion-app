@@ -474,6 +474,16 @@ async function runOpenModeTest() {
     } as any
   );
 
+  const p3 = new MockConnection("p3");
+  await server.onConnect(
+    p3 as any,
+    {
+      request: {
+        url: "http://localhost:1999/party/open-room?sessionId=p3",
+      },
+    } as any
+  );
+
   // Set mode to open and totalRaces to 1 (making Race 1 immediately the final race with double down)
   await server.onMessage(
     JSON.stringify({
@@ -540,6 +550,31 @@ async function runOpenModeTest() {
       },
     }),
     p2 as any
+  );
+
+  // P3 submits Mascot (Dangle) not doubled, Side (No) not doubled
+  await server.onMessage(
+    JSON.stringify({
+      type: "SUBMIT_BET",
+      payload: {
+        bet: {
+          type: "mascot",
+          mascotId: "dangle",
+          isRisky: false,
+          isDoubled: false,
+        },
+      },
+    }),
+    p3 as any
+  );
+  await server.onMessage(
+    JSON.stringify({
+      type: "SUBMIT_BET",
+      payload: {
+        bet: { type: "side", answer: "no", isRisky: false, isDoubled: false },
+      },
+    }),
+    p3 as any
   );
 
   console.log(
@@ -683,10 +718,100 @@ async function runRandomizationTest() {
   console.log("✅ Initial draft order randomization verified successfully!");
 }
 
+async function runPlayerLimitTests() {
+  console.log("\n=== Testing Player Count Limits (Min 3, Max 9 for Classic) ===");
+
+  // 1. Test 2 players rejected
+  {
+    const room = new MockRoom();
+    const server = new HotStreakServer(room as any);
+    const p1 = new MockConnection("p1");
+    const p2 = new MockConnection("p2");
+    await server.onConnect(p1 as any, { request: { url: "http://localhost:1999/party/t1?sessionId=p1" } } as any);
+    await server.onConnect(p2 as any, { request: { url: "http://localhost:1999/party/t1?sessionId=p2" } } as any);
+
+    await server.onMessage(JSON.stringify({ type: "HOST_START_GAME" }), p1 as any);
+    if (server.state.phase !== "LOBBY") {
+      throw new Error("Server allowed 2 players to start game!");
+    }
+    const lastMsg = p1.messages[p1.messages.length - 1];
+    if (!lastMsg || lastMsg.type !== "ERROR" || !lastMsg.payload.message.includes("at least 3")) {
+      throw new Error(`Expected at least 3 players error, got: ${JSON.stringify(lastMsg)}`);
+    }
+    console.log("✅ 2 players properly rejected:", lastMsg.payload.message);
+  }
+
+  // 2. Test Classic mode with 10 players rejected
+  {
+    const room = new MockRoom();
+    const server = new HotStreakServer(room as any);
+    const conns: MockConnection[] = [];
+    for (let i = 1; i <= 10; i++) {
+      const conn = new MockConnection(`p${i}`);
+      conns.push(conn);
+      await server.onConnect(conn as any, { request: { url: `http://localhost:1999/party/t2?sessionId=p${i}` } } as any);
+    }
+
+    await server.onMessage(JSON.stringify({ type: "HOST_START_GAME" }), conns[0] as any);
+    if (server.state.phase !== "LOBBY") {
+      throw new Error("Server allowed 10 players in Classic mode!");
+    }
+    const lastMsg = conns[0].messages[conns[0].messages.length - 1];
+    if (!lastMsg || lastMsg.type !== "ERROR" || !lastMsg.payload.message.includes("strictly limited to 9")) {
+      throw new Error(`Expected Classic 9 player limit error, got: ${JSON.stringify(lastMsg)}`);
+    }
+    console.log("✅ 10 players in Classic properly rejected:", lastMsg.payload.message);
+  }
+
+  // 3. Test Classic mode with exactly 9 players succeeds (18 tickets)
+  {
+    const room = new MockRoom();
+    const server = new HotStreakServer(room as any);
+    const conns: MockConnection[] = [];
+    for (let i = 1; i <= 9; i++) {
+      const conn = new MockConnection(`p${i}`);
+      conns.push(conn);
+      await server.onConnect(conn as any, { request: { url: `http://localhost:1999/party/t3?sessionId=p${i}` } } as any);
+    }
+
+    await server.onMessage(JSON.stringify({ type: "HOST_START_GAME" }), conns[0] as any);
+    if (server.state.phase !== "BETTING") {
+      throw new Error("Server failed to start 9-player Classic game!");
+    }
+    if (server.state.draftOrder.length !== 18) {
+      throw new Error(`Expected 18 drafted tickets for 9 players, got ${server.state.draftOrder.length}`);
+    }
+    console.log("✅ 9 players in Classic successfully started with 18 snake draft slots!");
+  }
+
+  // 4. Test Open Track mode with 10 players succeeds (unlimited capacity)
+  {
+    const room = new MockRoom();
+    const server = new HotStreakServer(room as any);
+    const conns: MockConnection[] = [];
+    for (let i = 1; i <= 10; i++) {
+      const conn = new MockConnection(`p${i}`);
+      conns.push(conn);
+      await server.onConnect(conn as any, { request: { url: `http://localhost:1999/party/t4?sessionId=p${i}` } } as any);
+    }
+
+    await server.onMessage(JSON.stringify({ type: "UPDATE_CONFIG", payload: { mode: "open" } }), conns[0] as any);
+    await server.onMessage(JSON.stringify({ type: "HOST_START_GAME" }), conns[0] as any);
+    if (server.state.phase !== "BETTING") {
+      throw new Error("Server failed to start 10-player Open game!");
+    }
+    if (server.state.draftOrder.length !== 10) {
+      throw new Error(`Expected 10 slots for 10 players in Open mode, got ${server.state.draftOrder.length}`);
+    }
+    console.log("✅ 10 players in Open Track mode successfully started!");
+  }
+}
+
 async function main() {
   await runTest();
   await runOpenModeTest();
   await runRandomizationTest();
+  await runPlayerLimitTests();
   console.log("\n🎉 ALL TESTS AND SUITES PASSED SUCCESSFULLY!");
 }
 
