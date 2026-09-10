@@ -57,8 +57,9 @@ const MASCOT_CONFIG: Record<
 };
 
 // Open mode temporary draft state
-let openMascotBet: { mascotId: MascotId; isRisky: boolean; isDoubled: boolean } | null = null;
-let openSideBet: { answer: "yes" | "no"; isRisky: boolean; isDoubled: boolean } | null = null;
+let openMascotBet: { mascotId: MascotId; isRisky: boolean } | null = null;
+let openSideBet: { answer: "yes" | "no"; isRisky: boolean } | null = null;
+let openDoubleChoice: "mascot" | "side" = "mascot";
 
 // ==========================================
 // Initialization & Navigation
@@ -707,21 +708,39 @@ function renderBettingScreen(state: GameState) {
       </div>
 
       <!-- Player's Drafted Tickets Summary -->
-      <div class="card">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
+      <div class="card" ${isFinalRace && myBetsCount === 2 ? 'style="border: 1px solid var(--color-gold);"' : ""}>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
           <h3 style="font-size: 0.95rem;">Your Drafted Tickets (${myBetsCount}/2)</h3>
-          ${isFinalRace && myBetsCount === 1 ? '<span class="badge badge-turn">2nd Ticket Doubled!</span>' : ""}
+          ${isFinalRace && myBetsCount === 2 ? '<span class="badge badge-ready">Tap ticket to set 2x</span>' : ""}
         </div>
+        ${
+          isFinalRace && myBetsCount === 2
+            ? `
+          <div style="font-size: 0.75rem; color: var(--color-gold); margin-bottom: 8px;">
+            🔥 Final Race: Exactly one bet is doubled. Tap either ticket below to choose!
+          </div>
+        `
+            : ""
+        }
         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
           ${
             myBets.length === 0
               ? '<span style="color: var(--text-muted); font-size: 0.85rem;">No tickets drafted yet this race.</span>'
               : myBets
                   .map(
-                    (b) => `
-              <div style="background: rgba(255,255,255,0.06); padding: 6px 12px; border-radius: var(--radius-sm); font-size: 0.85rem; border: 1px solid var(--border-glass);">
-                <strong>${b.type === "mascot" ? b.mascotId.toUpperCase() : "SIDE: " + b.answer.toUpperCase()}</strong>
-                (Tier ${b.tier}, ${b.isRisky ? "Risky" : "Safe"}${b.isDoubled ? " 🔥2x" : ""})
+                    (b, idx) => `
+              <div
+                class="drafted-ticket-chip ${isFinalRace && myBets.length === 2 ? "clickable-double" : ""}"
+                data-ticket-idx="${idx}"
+                style="background: ${b.isDoubled ? "rgba(251, 133, 0, 0.18)" : "rgba(255,255,255,0.06)"}; padding: 8px 12px; border-radius: var(--radius-sm); font-size: 0.85rem; border: ${b.isDoubled ? "2px solid var(--color-gold)" : "1px solid var(--border-glass)"}; cursor: ${isFinalRace && myBets.length === 2 ? "pointer" : "default"}; transition: all 0.2s ease; flex: 1; min-width: 130px;"
+              >
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px;">
+                  <strong>${b.type === "mascot" ? b.mascotId.toUpperCase() : "SIDE: " + b.answer.toUpperCase()}</strong>
+                  ${b.isDoubled ? '<span class="badge" style="background: var(--color-gold); color: #000; font-weight: 900; font-size: 0.7rem;">🔥 2X DOUBLED</span>' : (isFinalRace && myBets.length === 2 ? '<span style="font-size: 0.7rem; color: var(--text-muted);">Tap to 2x</span>' : "")}
+                </div>
+                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 3px;">
+                  Tier ${b.tier}, ${b.isRisky ? "🔥 Risky" : "🛡️ Safe"}
+                </div>
               </div>
             `
                   )
@@ -775,17 +794,6 @@ function renderBettingScreen(state: GameState) {
             })
             .join("")}
         </div>
-
-        ${
-          isFinalRace
-            ? `
-          <div style="display:flex; align-items:center; justify-content:space-between; margin-top: 6px;">
-            <span style="font-size: 0.85rem;">Double Down on Mascot?</span>
-            <input type="checkbox" id="open-mascot-double" ${openMascotBet?.isDoubled ? "checked" : ""} style="accent-color:var(--color-gold); width:20px; height:20px;" />
-          </div>
-        `
-            : ""
-        }
       </div>
 
       <div class="card">
@@ -806,18 +814,40 @@ function renderBettingScreen(state: GameState) {
             ❌ NO
           </button>
         </div>
-
-        ${
-          isFinalRace
-            ? `
-          <div style="display:flex; align-items:center; justify-content:space-between; margin-top: 6px;">
-            <span style="font-size: 0.85rem;">Double Down on Side Bet?</span>
-            <input type="checkbox" id="open-side-double" ${openSideBet?.isDoubled ? "checked" : ""} style="accent-color:var(--color-gold); width:20px; height:20px;" />
-          </div>
-        `
-            : ""
-        }
       </div>
+
+      ${
+        isFinalRace
+          ? `
+        <div class="card" style="border: 1px solid var(--color-gold);">
+          <div style="font-size: 0.85rem; font-weight: 800; color: var(--color-gold); text-transform: uppercase; margin-bottom: 4px;">
+            🔥 Final Race: Choose Bet to Double Down (2x)
+          </div>
+          <div style="font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 10px;">
+            One of your two bets will pay double (2x gain or 2x penalty). Pick which one to double:
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button
+              id="btn-double-mascot"
+              type="button"
+              class="btn ${openDoubleChoice === "mascot" ? "btn-primary" : "btn-secondary"}"
+              style="flex: 1; padding: 10px 8px; font-weight: 800;"
+            >
+              ${openDoubleChoice === "mascot" ? "🔥 " : ""}Mascot Bet (2x)
+            </button>
+            <button
+              id="btn-double-side"
+              type="button"
+              class="btn ${openDoubleChoice === "side" ? "btn-primary" : "btn-secondary"}"
+              style="flex: 1; padding: 10px 8px; font-weight: 800;"
+            >
+              ${openDoubleChoice === "side" ? "🔥 " : ""}Side Bet (2x)
+            </button>
+          </div>
+        </div>
+      `
+          : ""
+      }
 
       <button id="btn-submit-open-bets" class="btn btn-green btn-full" ${openMascotBet && openSideBet ? "" : "disabled"}>
         🔒 Lock In Bets
@@ -890,12 +920,23 @@ function renderBettingScreen(state: GameState) {
         openDraftModal(state, category);
       });
     });
+
+    // Final race: tap drafted ticket to choose double down
+    document.querySelectorAll(".drafted-ticket-chip.clickable-double").forEach((chip) => {
+      chip.addEventListener("click", () => {
+        const idx = Number(chip.getAttribute("data-ticket-idx"));
+        sendMessage({
+          type: "SELECT_DOUBLED_BET",
+          payload: { betIndex: idx },
+        });
+      });
+    });
   } else {
     // Open mode listeners
     document.querySelectorAll("[data-open-mascot]").forEach((btn) => {
       btn.addEventListener("click", () => {
         const m = btn.getAttribute("data-open-mascot") as MascotId;
-        openMascotBet = { mascotId: m, isRisky: false, isDoubled: false };
+        openMascotBet = { mascotId: m, isRisky: false };
         renderBettingScreen(state);
       });
     });
@@ -903,21 +944,19 @@ function renderBettingScreen(state: GameState) {
     document.querySelectorAll("[data-open-side]").forEach((btn) => {
       btn.addEventListener("click", () => {
         const ans = btn.getAttribute("data-open-side") as "yes" | "no";
-        openSideBet = { answer: ans, isRisky: false, isDoubled: false };
+        openSideBet = { answer: ans, isRisky: false };
         renderBettingScreen(state);
       });
     });
 
-    document.getElementById("open-mascot-double")?.addEventListener("change", (e) => {
-      if (openMascotBet) {
-        openMascotBet.isDoubled = (e.target as HTMLInputElement).checked;
-      }
+    document.getElementById("btn-double-mascot")?.addEventListener("click", () => {
+      openDoubleChoice = "mascot";
+      renderBettingScreen(state);
     });
 
-    document.getElementById("open-side-double")?.addEventListener("change", (e) => {
-      if (openSideBet) {
-        openSideBet.isDoubled = (e.target as HTMLInputElement).checked;
-      }
+    document.getElementById("btn-double-side")?.addEventListener("click", () => {
+      openDoubleChoice = "side";
+      renderBettingScreen(state);
     });
 
     document.getElementById("btn-submit-open-bets")?.addEventListener("click", () => {
@@ -929,7 +968,7 @@ function renderBettingScreen(state: GameState) {
               type: "mascot",
               mascotId: openMascotBet.mascotId,
               isRisky: openMascotBet.isRisky,
-              isDoubled: openMascotBet.isDoubled,
+              isDoubled: isFinalRace ? openDoubleChoice === "mascot" : false,
             },
           },
         });
@@ -940,7 +979,7 @@ function renderBettingScreen(state: GameState) {
               type: "side",
               answer: openSideBet.answer,
               isRisky: openSideBet.isRisky,
-              isDoubled: openSideBet.isDoubled,
+              isDoubled: isFinalRace ? openDoubleChoice === "side" : false,
             },
           },
         });
@@ -963,6 +1002,11 @@ function openDraftModal(state: GameState, category: MascotId | "yes" | "no") {
   const remainingTiers = state.availableTickets[category];
   const nextTier = remainingTiers[0];
   if (!nextTier) return;
+
+  const me = state.players[sessionId];
+  const isFinalRace = state.currentRace === state.totalRaces;
+  const myBetsCount = me?.currentBets.length || 0;
+  const myFirstBet = me?.currentBets[0];
 
   const isMascot = category !== "yes" && category !== "no";
   const name = isMascot ? MASCOT_CONFIG[category as MascotId].name : `Side Bet (${category.toUpperCase()})`;
@@ -995,6 +1039,67 @@ function openDraftModal(state: GameState, category: MascotId | "yes" | "no") {
   }
 
   let selectedRisky = false;
+  // If 2nd bet on final race, 0 = ticket 1 doubled, 1 = ticket 2 (this ticket) doubled
+  let selectedDoubleIndex = myFirstBet?.isDoubled ? 0 : 1;
+
+  let doubleHtml = "";
+  if (isFinalRace) {
+    if (myBetsCount === 0) {
+      doubleHtml = `
+        <div class="card" style="border: 1px solid var(--border-glass); padding: 10px; margin-top: 2px;">
+          <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
+            <div>
+              <div style="font-weight: 800; font-size: 0.9rem; color: var(--color-gold);">
+                🔥 Double Down on This Ticket?
+              </div>
+              <div style="font-size: 0.75rem; color: var(--text-secondary);">
+                Pays 2x on wins, costs 2x on losses. (You can also choose to double your 2nd ticket instead).
+              </div>
+            </div>
+            <input type="checkbox" id="draft-double-check" style="accent-color: var(--color-gold); width: 22px; height: 22px; cursor: pointer; margin-left: 10px;" />
+          </label>
+        </div>
+      `;
+    } else {
+      const t1Name = myFirstBet?.type === "mascot" ? MASCOT_CONFIG[myFirstBet.mascotId].name : `Side Bet (${myFirstBet?.answer.toUpperCase()})`;
+      const t1Details = `Tier ${myFirstBet?.tier}, ${myFirstBet?.isRisky ? "🔥 Risky" : "🛡️ Safe"}`;
+      doubleHtml = `
+        <div class="card" style="border: 1px solid var(--color-gold); padding: 10px; margin-top: 2px;">
+          <div style="font-weight: 800; font-size: 0.9rem; color: var(--color-gold); margin-bottom: 4px;">
+            🔥 Final Race: Which bet do you want doubled (2x)?
+          </div>
+          <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 8px;">
+            One of your two bets must be doubled. Select which one:
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div
+              id="draft-choice-double-1"
+              class="card"
+              style="cursor: pointer; padding: 8px 12px; margin: 0; border: ${selectedDoubleIndex === 0 ? "2px solid var(--color-gold)" : "1px solid var(--border-glass)"}; background: ${selectedDoubleIndex === 0 ? "rgba(251, 133, 0, 0.15)" : "var(--bg-card)"};"
+            >
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 0.85rem; font-weight: 700;">Ticket 1: ${t1Name}</span>
+                <span class="badge ${selectedDoubleIndex === 0 ? "badge-turn" : ""}" id="badge-opt-1">${selectedDoubleIndex === 0 ? "🔥 2x Doubled" : "Tap to 2x"}</span>
+              </div>
+              <div style="font-size: 0.75rem; color: var(--text-muted);">${t1Details}</div>
+            </div>
+
+            <div
+              id="draft-choice-double-2"
+              class="card"
+              style="cursor: pointer; padding: 8px 12px; margin: 0; border: ${selectedDoubleIndex === 1 ? "2px solid var(--color-gold)" : "1px solid var(--border-glass)"}; background: ${selectedDoubleIndex === 1 ? "rgba(251, 133, 0, 0.15)" : "var(--bg-card)"};"
+            >
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 0.85rem; font-weight: 700;">Ticket 2: ${name} (This Pick)</span>
+                <span class="badge ${selectedDoubleIndex === 1 ? "badge-turn" : ""}" id="badge-opt-2">${selectedDoubleIndex === 1 ? "🔥 2x Doubled" : "Tap to 2x"}</span>
+              </div>
+              <div style="font-size: 0.75rem; color: var(--text-muted);">Tier ${nextTier}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+  }
 
   modalContainer.innerHTML = `
     <div class="backdrop" id="modal-backdrop"></div>
@@ -1034,6 +1139,8 @@ function openDraftModal(state: GameState, category: MascotId | "yes" | "no") {
         </div>
       </div>
 
+      ${doubleHtml}
+
       <button id="btn-confirm-draft" class="btn btn-primary btn-full">
         Confirm Draft Pick
       </button>
@@ -1059,21 +1166,73 @@ function openDraftModal(state: GameState, category: MascotId | "yes" | "no") {
     safeCard.style.background = "var(--bg-card)";
   });
 
+  const opt1 = document.getElementById("draft-choice-double-1");
+  const opt2 = document.getElementById("draft-choice-double-2");
+  if (opt1 && opt2) {
+    opt1.addEventListener("click", () => {
+      selectedDoubleIndex = 0;
+      opt1.style.border = "2px solid var(--color-gold)";
+      opt1.style.background = "rgba(251, 133, 0, 0.15)";
+      opt2.style.border = "1px solid var(--border-glass)";
+      opt2.style.background = "var(--bg-card)";
+      const b1 = document.getElementById("badge-opt-1");
+      const b2 = document.getElementById("badge-opt-2");
+      if (b1) {
+        b1.textContent = "🔥 2x Doubled";
+        b1.className = "badge badge-turn";
+      }
+      if (b2) {
+        b2.textContent = "Tap to 2x";
+        b2.className = "badge";
+      }
+    });
+
+    opt2.addEventListener("click", () => {
+      selectedDoubleIndex = 1;
+      opt2.style.border = "2px solid var(--color-gold)";
+      opt2.style.background = "rgba(251, 133, 0, 0.15)";
+      opt1.style.border = "1px solid var(--border-glass)";
+      opt1.style.background = "var(--bg-card)";
+      const b1 = document.getElementById("badge-opt-1");
+      const b2 = document.getElementById("badge-opt-2");
+      if (b2) {
+        b2.textContent = "🔥 2x Doubled";
+        b2.className = "badge badge-turn";
+      }
+      if (b1) {
+        b1.textContent = "Tap to 2x";
+        b1.className = "badge";
+      }
+    });
+  }
+
   document.getElementById("modal-backdrop")?.addEventListener("click", () => {
     modalContainer.innerHTML = "";
   });
 
   document.getElementById("btn-confirm-draft")?.addEventListener("click", () => {
+    let isDoubled = false;
+    if (isFinalRace) {
+      if (myBetsCount === 0) {
+        const check = document.getElementById("draft-double-check") as HTMLInputElement | null;
+        isDoubled = !!check?.checked;
+      } else {
+        isDoubled = selectedDoubleIndex === 1;
+      }
+    }
+
     const bet: Bet = isMascot
       ? {
           type: "mascot",
           mascotId: category as MascotId,
           isRisky: selectedRisky,
+          isDoubled,
         }
       : {
           type: "side",
           answer: category as "yes" | "no",
           isRisky: selectedRisky,
+          isDoubled,
         };
 
     sendMessage({
@@ -1110,6 +1269,11 @@ function renderRaceInputScreen(state: GameState) {
 
   // Active bets for the current user
   const myBets = me?.currentBets || [];
+  const isFinalRace = state.currentRace === state.totalRaces;
+  const canSwitchDouble =
+    isFinalRace &&
+    myBets.length === 2 &&
+    Object.keys(placements).length === 0;
 
   const renderPositionSlot = (pos: 1 | 2 | 3 | 4) => {
     const assigned = placements[pos];
@@ -1196,22 +1360,32 @@ function renderRaceInputScreen(state: GameState) {
       ${
         myBets.length > 0
           ? `
-        <div class="card" style="border: 1px solid rgba(255, 183, 3, 0.35); background: rgba(255, 183, 3, 0.06); padding: 12px 16px;">
-          <div style="font-size: 0.75rem; font-weight: 800; color: var(--color-gold); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">
-            🎯 Your Active Wagers This Race
+        <div class="card" style="padding: 12px 14px; ${isFinalRace ? "border: 1px solid var(--color-gold);" : ""}">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <div style="font-size: 0.75rem; font-weight: 800; color: var(--color-gold); text-transform: uppercase; letter-spacing: 0.05em;">
+              🎯 Your Active Wagers This Race
+            </div>
+            ${canSwitchDouble ? '<span style="font-size: 0.7rem; color: var(--text-muted);">Tap to switch 2x</span>' : ""}
           </div>
-          <div style="display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; flex-direction: column; gap: 8px;">
             ${myBets
-              .map((b) => {
+              .map((b, idx) => {
+                const doubleBadge = b.isDoubled
+                  ? '<span class="badge" style="background: var(--color-gold); color: #000; font-weight: 900; font-size: 0.7rem; margin-left: 6px;">🔥 2X DOUBLED</span>'
+                  : canSwitchDouble
+                  ? `<button class="btn btn-secondary btn-switch-double" data-switch-idx="${idx}" style="padding: 2px 8px; font-size: 0.7rem; min-height: unset; margin-left: 6px; font-weight: 700;">Tap to 2x</button>`
+                  : "";
+
                 if (b.type === "mascot") {
                   const m = MASCOT_CONFIG[b.mascotId];
                   return `
                     <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem;">
-                      <div>
-                        <span>${m.icon}</span> <strong>${m.name}</strong>
+                      <div style="display: flex; align-items: center;">
+                        <span>${m.icon}</span> <strong style="margin-left: 4px;">${m.name}</strong>
                         <span style="font-size: 0.75rem; color: ${b.isRisky ? "var(--color-orange)" : "var(--color-green)"}; margin-left: 4px;">
-                          (${b.isRisky ? "🔥 Risky" : "🛡️ Safe"}${b.tier ? ` T${b.tier}` : ""}${b.isDoubled ? " ✖2" : ""})
+                          (${b.isRisky ? "🔥 Risky" : "🛡️ Safe"}${b.tier ? ` T${b.tier}` : ""})
                         </span>
+                        ${doubleBadge}
                       </div>
                       <span style="font-size: 0.8rem; color: var(--text-muted);">Goal: 1st-3rd</span>
                     </div>
@@ -1224,11 +1398,12 @@ function renderRaceInputScreen(state: GameState) {
 
                   return `
                     <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem;">
-                      <div>
-                        <span>🎲</span> <strong>Side Bet: ${b.answer.toUpperCase()}</strong>
+                      <div style="display: flex; align-items: center;">
+                        <span>🎲</span> <strong style="margin-left: 4px;">Side Bet: ${b.answer.toUpperCase()}</strong>
                         <span style="font-size: 0.75rem; color: ${b.isRisky ? "var(--color-orange)" : "var(--color-green)"}; margin-left: 4px;">
-                          (${b.isRisky ? "🔥 Risky" : "🛡️ Safe"}${b.tier ? ` T${b.tier}` : ""}${b.isDoubled ? " ✖2" : ""})
+                          (${b.isRisky ? "🔥 Risky" : "🛡️ Safe"}${b.tier ? ` T${b.tier}` : ""})
                         </span>
+                        ${doubleBadge}
                       </div>
                       <span style="font-size: 0.8rem; font-weight: 800;">
                         ${
@@ -1455,6 +1630,17 @@ function renderRaceInputScreen(state: GameState) {
       }
     });
   }
+
+  // Switch doubled bet before race placements begin
+  document.querySelectorAll(".btn-switch-double").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const idx = Number(btn.getAttribute("data-switch-idx"));
+      sendMessage({
+        type: "SELECT_DOUBLED_BET",
+        payload: { betIndex: idx },
+      });
+    });
+  });
 }
 
 // ------------------------------------------

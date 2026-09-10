@@ -168,6 +168,7 @@ export type ClientMessage =
   | { type: "FINALIZE_RACE" }
   | { type: "NEXT_RACE" }
   | { type: "FORCE_START_RACE" }
+  | { type: "SELECT_DOUBLED_BET"; payload: { betIndex: number } }
   | { type: "RESTART_GAME" };
 
 export type ServerMessage =
@@ -376,6 +377,10 @@ export default class HotStreakServer implements Party.Server {
         this.handleForceStartRace(sender, senderId);
         break;
 
+      case "SELECT_DOUBLED_BET":
+        this.handleSelectDoubledBet(sender, senderId, parsed.payload.betIndex);
+        break;
+
       case "RESTART_GAME":
         this.handleRestartGame(sender, senderId);
         break;
@@ -558,9 +563,28 @@ export default class HotStreakServer implements Party.Server {
     const assignedTier = ticketStack.shift()!;
     bet.tier = assignedTier;
 
-    // In 3rd race, 2nd drafted bet can be doubled down
-    if (this.state.doubleDownEnabled && player.currentBets.length === 1) {
-      bet.isDoubled = true;
+    // In final race, handle double down choice
+    if (this.state.doubleDownEnabled) {
+      if (player.currentBets.length === 0) {
+        // First ticket pick
+        bet.isDoubled = !!bet.isDoubled;
+      } else if (player.currentBets.length === 1) {
+        // Second ticket pick
+        if (bet.isDoubled === true) {
+          bet.isDoubled = true;
+          player.currentBets[0].isDoubled = false;
+        } else if (bet.isDoubled === false) {
+          bet.isDoubled = false;
+          player.currentBets[0].isDoubled = true;
+        } else {
+          // If not explicitly specified by client
+          if (player.currentBets[0].isDoubled) {
+            bet.isDoubled = false;
+          } else {
+            bet.isDoubled = true;
+          }
+        }
+      }
     }
 
     player.currentBets.push(bet);
@@ -602,6 +626,28 @@ export default class HotStreakServer implements Party.Server {
       }
     }
 
+    // On final race, ensure exactly one bet is doubled when both are placed
+    if (this.state.doubleDownEnabled && player.currentBets.length === 2) {
+      const b0 = player.currentBets[0];
+      const b1 = player.currentBets[1];
+      if (b0.isDoubled && b1.isDoubled) {
+        // Resolve conflict: prioritize the newly updated bet
+        if (bet.type === b0.type) {
+          b1.isDoubled = false;
+        } else {
+          b0.isDoubled = false;
+        }
+      } else if (!b0.isDoubled && !b1.isDoubled) {
+        // Neither was doubled; default to doubling the mascot bet
+        const mascotBet = player.currentBets.find((b) => b.type === "mascot");
+        if (mascotBet) {
+          mascotBet.isDoubled = true;
+        } else {
+          player.currentBets[0].isDoubled = true;
+        }
+      }
+    }
+
     if (player.currentBets.length === 2) {
       player.isReady = true;
     }
@@ -617,6 +663,50 @@ export default class HotStreakServer implements Party.Server {
     if (allReady) {
       this.state.phase = "RACE_INPUT";
     }
+
+    this.broadcastState();
+  }
+
+  private handleSelectDoubledBet(
+    sender: Party.Connection,
+    senderId: string,
+    betIndex: number
+  ) {
+    const player = this.state.players[senderId];
+    if (!player) {
+      this.sendError(sender, "Player not found.");
+      return;
+    }
+
+    if (!this.state.doubleDownEnabled) {
+      this.sendError(sender, "Double down is only active on the final race.");
+      return;
+    }
+
+    if (player.currentBets.length !== 2) {
+      this.sendError(
+        sender,
+        "You must have 2 bets placed before selecting which one to double."
+      );
+      return;
+    }
+
+    if (betIndex !== 0 && betIndex !== 1) {
+      this.sendError(sender, "Invalid bet selection.");
+      return;
+    }
+
+    // Do not allow changing once live race placements have started
+    if (Object.keys(this.state.livePlacements).length > 0) {
+      this.sendError(
+        sender,
+        "Cannot change double-down bet once race placements have begun."
+      );
+      return;
+    }
+
+    player.currentBets[0].isDoubled = betIndex === 0;
+    player.currentBets[1].isDoubled = betIndex === 1;
 
     this.broadcastState();
   }
