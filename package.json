@@ -6,10 +6,12 @@
   "scripts": {
     "dev": "partykit dev",
     "deploy": "partykit deploy",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "tsx test/simulation.ts"
   },
   "devDependencies": {
     "partykit": "^0.0.111",
+    "tsx": "^4.23.13",
     "typescript": "^5.5.4"
   }
 }
