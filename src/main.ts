@@ -5,6 +5,7 @@ import {
   sendMessage,
   subscribeState,
   subscribeEvent,
+  subscribeError,
   getState,
   sessionId,
   type GameState,
@@ -87,6 +88,25 @@ function init() {
   // Subscribe to reactive state updates from PartyKit
   subscribeState((state) => {
     renderApp(state);
+  });
+
+  // Subscribe to server error messages (e.g. duplicate name, validation)
+  subscribeError((errorMessage) => {
+    const nameErrorElem =
+      document.getElementById("name-error-msg") ||
+      document.getElementById("join-error-msg");
+    const nameInput = (document.getElementById("player-name") ||
+      document.getElementById("join-name")) as HTMLInputElement | null;
+
+    if (nameErrorElem && nameInput) {
+      nameErrorElem.textContent = `⚠️ ${errorMessage}`;
+      nameErrorElem.style.display = "flex";
+      nameInput.classList.add("input-error");
+      nameInput.focus();
+      nameInput.select();
+    } else {
+      alert(errorMessage);
+    }
   });
 
   // Reaction banner helper
@@ -499,7 +519,7 @@ function renderHomeScreen() {
 
       <div class="card">
         <div class="input-group">
-          <label class="input-label" for="player-name">Your Name</label>
+          <label class="input-label" for="player-name">Your Name <span class="required-mark">*</span></label>
           <input
             id="player-name"
             class="text-input"
@@ -507,6 +527,7 @@ function renderHomeScreen() {
             value="${localPlayerName}"
             maxlength="16"
           />
+          <div id="name-error-msg" class="input-error-msg" style="display: none;"></div>
         </div>
 
         <button id="btn-host" class="btn btn-primary btn-full">
@@ -526,6 +547,7 @@ function renderHomeScreen() {
             maxlength="4"
             style="text-transform: uppercase; letter-spacing: 0.15em; font-size: 1.3rem; text-align: center;"
           />
+          <div id="room-error-msg" class="input-error-msg" style="display: none;"></div>
         </div>
 
         <button id="btn-join" class="btn btn-secondary btn-full">
@@ -537,25 +559,91 @@ function renderHomeScreen() {
 
   const nameInput = document.getElementById("player-name") as HTMLInputElement;
   const roomInput = document.getElementById("room-code-input") as HTMLInputElement;
+  const nameErrorMsg = document.getElementById("name-error-msg") as HTMLDivElement;
+  const roomErrorMsg = document.getElementById("room-error-msg") as HTMLDivElement;
 
-  document.getElementById("btn-host")?.addEventListener("click", () => {
-    const name = nameInput.value.trim() || "Host";
+  function clearErrors() {
+    nameInput.classList.remove("input-error");
+    roomInput.classList.remove("input-error");
+    if (nameErrorMsg) nameErrorMsg.style.display = "none";
+    if (roomErrorMsg) roomErrorMsg.style.display = "none";
+  }
+
+  function showNameError(msg: string) {
+    nameInput.classList.add("input-error");
+    if (nameErrorMsg) {
+      nameErrorMsg.textContent = `⚠️ ${msg}`;
+      nameErrorMsg.style.display = "flex";
+    }
+    nameInput.focus();
+  }
+
+  function showRoomError(msg: string) {
+    roomInput.classList.add("input-error");
+    if (roomErrorMsg) {
+      roomErrorMsg.textContent = `⚠️ ${msg}`;
+      roomErrorMsg.style.display = "flex";
+    }
+    roomInput.focus();
+  }
+
+  nameInput.addEventListener("input", () => {
+    nameInput.classList.remove("input-error");
+    if (nameErrorMsg) nameErrorMsg.style.display = "none";
+  });
+
+  roomInput.addEventListener("input", () => {
+    roomInput.classList.remove("input-error");
+    if (roomErrorMsg) roomErrorMsg.style.display = "none";
+  });
+
+  function handleHost() {
+    clearErrors();
+    const name = nameInput.value.trim().replace(/\s+/g, " ");
+    if (!name) {
+      showNameError("Please enter your name to host a game.");
+      return;
+    }
     localPlayerName = name;
     localStorage.setItem("hot_streak_player_name", name);
     const roomCode = generateRoomCode();
     connectToRoom(roomCode, name, true);
-  });
+  }
 
-  document.getElementById("btn-join")?.addEventListener("click", () => {
-    const name = nameInput.value.trim() || "Racer";
+  function handleJoin() {
+    clearErrors();
+    const name = nameInput.value.trim().replace(/\s+/g, " ");
+    if (!name) {
+      showNameError("Please enter your name to join a game.");
+      return;
+    }
     const room = roomInput.value.trim().toUpperCase();
     if (room.length !== 4) {
-      alert("Please enter a valid 4-letter room code.");
+      showRoomError("Please enter a valid 4-letter room code.");
       return;
     }
     localPlayerName = name;
     localStorage.setItem("hot_streak_player_name", name);
     connectToRoom(room, name);
+  }
+
+  document.getElementById("btn-host")?.addEventListener("click", handleHost);
+  document.getElementById("btn-join")?.addEventListener("click", handleJoin);
+
+  nameInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      if (roomInput.value.trim()) {
+        handleJoin();
+      } else {
+        handleHost();
+      }
+    }
+  });
+
+  roomInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      handleJoin();
+    }
   });
 }
 
@@ -574,7 +662,7 @@ function renderJoinScreen(prefilledRoom: string) {
 
       <div class="card">
         <div class="input-group">
-          <label class="input-label" for="join-name">Enter Your Name</label>
+          <label class="input-label" for="join-name">Enter Your Name <span class="required-mark">*</span></label>
           <input
             id="join-name"
             class="text-input"
@@ -583,21 +671,62 @@ function renderJoinScreen(prefilledRoom: string) {
             maxlength="16"
             autofocus
           />
+          <div id="join-error-msg" class="input-error-msg" style="display: none;"></div>
         </div>
 
         <button id="btn-confirm-join" class="btn btn-primary btn-full">
           Enter Racetrack
         </button>
+
+        <button id="btn-back-home" class="btn btn-secondary btn-full" style="margin-top: 4px;">
+          ← Back to Home
+        </button>
       </div>
     </main>
   `;
 
-  document.getElementById("btn-confirm-join")?.addEventListener("click", () => {
-    const nameInput = document.getElementById("join-name") as HTMLInputElement;
-    const name = nameInput.value.trim() || "Racer";
+  const nameInput = document.getElementById("join-name") as HTMLInputElement;
+  const joinErrorMsg = document.getElementById("join-error-msg") as HTMLDivElement;
+
+  function showJoinError(msg: string) {
+    nameInput.classList.add("input-error");
+    if (joinErrorMsg) {
+      joinErrorMsg.textContent = `⚠️ ${msg}`;
+      joinErrorMsg.style.display = "flex";
+    }
+    nameInput.focus();
+  }
+
+  nameInput.addEventListener("input", () => {
+    nameInput.classList.remove("input-error");
+    if (joinErrorMsg) joinErrorMsg.style.display = "none";
+  });
+
+  function confirmJoin() {
+    nameInput.classList.remove("input-error");
+    if (joinErrorMsg) joinErrorMsg.style.display = "none";
+
+    const name = nameInput.value.trim().replace(/\s+/g, " ");
+    if (!name) {
+      showJoinError("Please enter your name to join the game.");
+      return;
+    }
     localPlayerName = name;
     localStorage.setItem("hot_streak_player_name", name);
     connectToRoom(prefilledRoom, name);
+  }
+
+  document.getElementById("btn-confirm-join")?.addEventListener("click", confirmJoin);
+
+  nameInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      confirmJoin();
+    }
+  });
+
+  document.getElementById("btn-back-home")?.addEventListener("click", () => {
+    window.history.replaceState({}, "", window.location.pathname);
+    renderHomeScreen();
   });
 }
 
@@ -749,15 +878,15 @@ async function renderLobbyScreen(state: GameState) {
           </span>
         </div>
         ${isTooFew
-          ? `<div style="font-size: 0.8rem; color: var(--color-gold); margin-top: 6px; padding: 6px 10px; background: rgba(251, 133, 0, 0.12); border-radius: var(--radius-sm); border: 1px solid rgba(251, 133, 0, 0.3);">
+      ? `<div style="font-size: 0.8rem; color: var(--color-gold); margin-top: 6px; padding: 6px 10px; background: rgba(251, 133, 0, 0.12); border-radius: var(--radius-sm); border: 1px solid rgba(251, 133, 0, 0.3);">
               ⚠️ Need at least 3 players to start (${activeCount}/3 joined).
             </div>`
-          : isTooMany
-          ? `<div style="font-size: 0.8rem; color: #fca5a5; margin-top: 6px; padding: 6px 10px; background: rgba(239, 68, 68, 0.15); border-radius: var(--radius-sm); border: 1px solid rgba(239, 68, 68, 0.4);">
+      : isTooMany
+        ? `<div style="font-size: 0.8rem; color: #fca5a5; margin-top: 6px; padding: 6px 10px; background: rgba(239, 68, 68, 0.15); border-radius: var(--radius-sm); border: 1px solid rgba(239, 68, 68, 0.4);">
               ⛔ Classic Draft allows max 9 players (18 tickets). Switch to Open Track or have extra racers spectate.
             </div>`
-          : ""
-        }
+        : ""
+    }
         <div class="player-list" style="margin-top: 8px;">
           ${playersListHtml}
         </div>
@@ -778,7 +907,9 @@ async function renderLobbyScreen(state: GameState) {
 
   // Listeners
   document.getElementById("btn-leave")?.addEventListener("click", () => {
+    sendMessage({ type: "LEAVE_ROOM" });
     disconnectFromRoom();
+    window.history.replaceState({}, "", window.location.pathname);
     renderHomeScreen();
   });
 

@@ -169,6 +169,7 @@ export type ClientMessage =
   | { type: "NEXT_RACE" }
   | { type: "FORCE_START_RACE" }
   | { type: "SELECT_DOUBLED_BET"; payload: { betIndex: number } }
+  | { type: "LEAVE_ROOM" }
   | { type: "RESTART_GAME" };
 
 export type ServerMessage =
@@ -245,29 +246,69 @@ export default class HotStreakServer implements Party.Server {
     const requestedSessionId = url.searchParams.get("sessionId");
     const playerId = requestedSessionId || conn.id;
 
+    const rawName = url.searchParams.get("name");
+    const requestedName = rawName ? decodeURIComponent(rawName).trim().replace(/\s+/g, " ") : "";
+    const isPlayingHostParam = url.searchParams.get("isPlayingHost");
+    const isPlayingHost = isPlayingHostParam !== null ? isPlayingHostParam === "true" : true;
+
     // Check if re-connecting existing player
     let player = this.state.players[playerId];
 
     if (!player) {
+      // If a specific name is requested, validate uniqueness before registering player
+      if (requestedName) {
+        if (requestedName.length > 16) {
+          this.sendError(conn, "Player name cannot exceed 16 characters.");
+          try { (conn as any).close?.(4000, "Name too long"); } catch {}
+          return;
+        }
+
+        const nameLower = requestedName.toLowerCase();
+        const isTaken = Object.values(this.state.players).some(
+          (p) => p.id !== playerId && p.name.trim().toLowerCase() === nameLower
+        );
+
+        if (isTaken) {
+          this.sendError(
+            conn,
+            `The name "${requestedName}" is already taken in this room. Please choose a different name.`
+          );
+          try { (conn as any).close?.(4001, "Name already taken"); } catch {}
+          return;
+        }
+      }
+
       // First person to connect is designated as host
       const isFirstClient = !this.state.hostId;
       if (isFirstClient) {
         this.state.hostId = playerId;
       }
 
+      const assignedName = requestedName || `Player ${Object.keys(this.state.players).length + 1}`;
+
       player = {
         id: playerId,
-        name: `Player ${Object.keys(this.state.players).length + 1}`,
+        name: assignedName,
         score: 10, // Starting cash per Hot Streak rules ($10)
         currentBets: [],
         isReady: false,
         isHost: isFirstClient,
-        isPlayingHost: true,
+        isPlayingHost: isPlayingHost,
         connected: true,
       };
       this.state.players[playerId] = player;
     } else {
       player.connected = true;
+      // If reconnecting player provides a new name, validate uniqueness before updating
+      if (requestedName && requestedName !== player.name) {
+        const nameLower = requestedName.toLowerCase();
+        const isTaken = Object.values(this.state.players).some(
+          (p) => p.id !== playerId && p.name.trim().toLowerCase() === nameLower
+        );
+        if (!isTaken) {
+          player.name = requestedName;
+        }
+      }
     }
 
     // Assign session id attribute so onClose identifies player
@@ -329,7 +370,11 @@ export default class HotStreakServer implements Party.Server {
 
     switch (parsed.type) {
       case "REGISTER_PROFILE":
-        this.handleRegisterProfile(senderId, parsed.payload);
+        this.handleRegisterProfile(sender, senderId, parsed.payload);
+        break;
+
+      case "LEAVE_ROOM":
+        this.handleLeaveRoom(sender, senderId);
         break;
 
       case "UPDATE_CONFIG":
@@ -399,18 +444,68 @@ export default class HotStreakServer implements Party.Server {
   // ----------------------------------------
 
   private handleRegisterProfile(
+    sender: Party.Connection,
     playerId: string,
     payload: { name: string; isPlayingHost?: boolean }
   ) {
     const player = this.state.players[playerId];
+    if (!player) {
+      this.sendError(sender, "Player not found.");
+      return;
+    }
+
+    if (payload.name !== undefined) {
+      const cleanName = payload.name.trim().replace(/\s+/g, " ");
+      if (cleanName.length === 0) {
+        this.sendError(sender, "Player name cannot be empty.");
+        return;
+      }
+      if (cleanName.length > 16) {
+        this.sendError(sender, "Player name cannot exceed 16 characters.");
+        return;
+      }
+
+      const nameLower = cleanName.toLowerCase();
+      const isTaken = Object.values(this.state.players).some(
+        (p) => p.id !== playerId && p.name.trim().toLowerCase() === nameLower
+      );
+
+      if (isTaken) {
+        this.sendError(
+          sender,
+          `The name "${cleanName}" is already taken in this room. Please choose a different name.`
+        );
+        return;
+      }
+
+      player.name = cleanName;
+    }
+
+    if (player.isHost && typeof payload.isPlayingHost === "boolean") {
+      player.isPlayingHost = payload.isPlayingHost;
+    }
+
+    this.broadcastState();
+  }
+
+  private handleLeaveRoom(sender: Party.Connection, senderId: string) {
+    const player = this.state.players[senderId];
     if (player) {
-      if (payload.name && payload.name.trim().length > 0) {
-        player.name = payload.name.trim();
+      if (this.state.phase === "LOBBY") {
+        if (player.isHost) {
+          const connectedOthers = Object.values(this.state.players).filter(
+            (p) => p.connected && p.id !== senderId
+          );
+          if (connectedOthers.length > 0) {
+            connectedOthers[0].isHost = true;
+            this.state.hostId = connectedOthers[0].id;
+          } else {
+            this.state.hostId = null;
+          }
+        }
+        delete this.state.players[senderId];
+        this.broadcastState();
       }
-      if (player.isHost && typeof payload.isPlayingHost === "boolean") {
-        player.isPlayingHost = payload.isPlayingHost;
-      }
-      this.broadcastState();
     }
   }
 

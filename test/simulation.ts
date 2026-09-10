@@ -4,6 +4,7 @@ import HotStreakServer from "../src/server";
 class MockConnection {
   state: Record<string, any> = {};
   messages: any[] = [];
+  closed: boolean = false;
 
   constructor(public id: string) {}
 
@@ -13,6 +14,10 @@ class MockConnection {
 
   send(data: string) {
     this.messages.push(JSON.parse(data));
+  }
+
+  close(code?: number, reason?: string) {
+    this.closed = true;
   }
 }
 
@@ -807,11 +812,147 @@ async function runPlayerLimitTests() {
   }
 }
 
+async function runUniqueNameTests() {
+  console.log("\n=== Testing Unique Name Enforcement & Validation ===");
+  const room = new MockRoom();
+  const server = new HotStreakServer(room as any);
+
+  // 1. Connect Host P1 with name "Lucky Charlie"
+  const p1 = new MockConnection("p1");
+  await server.onConnect(p1 as any, {
+    request: { url: "http://localhost:1999/party/name-room?sessionId=p1&name=Lucky%20Charlie" },
+  } as any);
+
+  console.log("P1 joined with name:", server.state.players["p1"]?.name);
+  if (server.state.players["p1"]?.name !== "Lucky Charlie") {
+    throw new Error(`Expected P1 name "Lucky Charlie", got ${server.state.players["p1"]?.name}`);
+  }
+
+  // 2. Connect P2 with exact duplicate name "Lucky Charlie" -> Must be rejected
+  const p2Duplicate = new MockConnection("p2_dup");
+  await server.onConnect(p2Duplicate as any, {
+    request: { url: "http://localhost:1999/party/name-room?sessionId=p2_dup&name=Lucky%20Charlie" },
+  } as any);
+
+  if (server.state.players["p2_dup"]) {
+    throw new Error("Server allowed duplicate name on connect!");
+  }
+  if (!p2Duplicate.closed) {
+    throw new Error("Server did not close rejected duplicate connection!");
+  }
+  const dupErrMsg = p2Duplicate.messages[p2Duplicate.messages.length - 1];
+  if (!dupErrMsg || dupErrMsg.type !== "ERROR" || !dupErrMsg.payload.message.includes("already taken")) {
+    throw new Error(`Expected already taken error, got: ${JSON.stringify(dupErrMsg)}`);
+  }
+  console.log("✅ Exact duplicate name properly rejected:", dupErrMsg.payload.message);
+
+  // 3. Connect P2 with case-insensitive duplicate name "  lucky   charlie  " -> Must be rejected
+  const p2CaseDup = new MockConnection("p2_case_dup");
+  await server.onConnect(p2CaseDup as any, {
+    request: { url: "http://localhost:1999/party/name-room?sessionId=p2_case_dup&name=%20%20lucky%20%20%20charlie%20%20" },
+  } as any);
+
+  if (server.state.players["p2_case_dup"]) {
+    throw new Error("Server allowed case-insensitive duplicate name!");
+  }
+  console.log("✅ Case-insensitive & whitespace duplicate name properly rejected");
+
+  // 4. Connect P2 with unique name "High Roller" -> Must succeed
+  const p2 = new MockConnection("p2");
+  await server.onConnect(p2 as any, {
+    request: { url: "http://localhost:1999/party/name-room?sessionId=p2&name=High%20Roller" },
+  } as any);
+
+  if (server.state.players["p2"]?.name !== "High Roller") {
+    throw new Error(`Expected P2 name "High Roller", got ${server.state.players["p2"]?.name}`);
+  }
+  console.log("✅ Unique name 'High Roller' successfully registered");
+
+  // 5. P2 attempts to change name to "Lucky Charlie" via REGISTER_PROFILE -> Must be rejected
+  await server.onMessage(
+    JSON.stringify({
+      type: "REGISTER_PROFILE",
+      payload: { name: "Lucky Charlie" },
+    }),
+    p2 as any
+  );
+  if (server.state.players["p2"]?.name !== "High Roller") {
+    throw new Error("REGISTER_PROFILE allowed taking an existing player's name!");
+  }
+  const lastP2Msg = p2.messages[p2.messages.length - 1];
+  if (!lastP2Msg || lastP2Msg.type !== "ERROR" || !lastP2Msg.payload.message.includes("already taken")) {
+    throw new Error(`Expected duplicate name error in REGISTER_PROFILE, got: ${JSON.stringify(lastP2Msg)}`);
+  }
+  console.log("✅ REGISTER_PROFILE duplicate name properly rejected:", lastP2Msg.payload.message);
+
+  // 6. P2 attempts to change name to blank / whitespace -> Must be rejected
+  await server.onMessage(
+    JSON.stringify({
+      type: "REGISTER_PROFILE",
+      payload: { name: "   " },
+    }),
+    p2 as any
+  );
+  if (server.state.players["p2"]?.name !== "High Roller") {
+    throw new Error("REGISTER_PROFILE allowed blank name!");
+  }
+  const blankErrMsg = p2.messages[p2.messages.length - 1];
+  if (!blankErrMsg || blankErrMsg.type !== "ERROR" || !blankErrMsg.payload.message.includes("cannot be empty")) {
+    throw new Error(`Expected empty name error, got: ${JSON.stringify(blankErrMsg)}`);
+  }
+  console.log("✅ Blank name properly rejected:", blankErrMsg.payload.message);
+
+  // 7. P2 changes name to "Speedy Pete" -> Must succeed
+  await server.onMessage(
+    JSON.stringify({
+      type: "REGISTER_PROFILE",
+      payload: { name: "Speedy Pete" },
+    }),
+    p2 as any
+  );
+  if ((server.state.players["p2"]?.name as string) !== "Speedy Pete") {
+    throw new Error(`Expected P2 name to update to "Speedy Pete", got ${server.state.players["p2"]?.name}`);
+  }
+  console.log("✅ REGISTER_PROFILE successfully updated to unique name 'Speedy Pete'");
+
+  // 8. P1 reconnects with the same sessionId and same name -> Must succeed without conflict
+  await server.onConnect(p1 as any, {
+    request: { url: "http://localhost:1999/party/name-room?sessionId=p1&name=Lucky%20Charlie" },
+  } as any);
+  if (server.state.players["p1"]?.name !== "Lucky Charlie") {
+    throw new Error("Reconnecting player lost their name!");
+  }
+  console.log("✅ Reconnecting player with same session ID preserved name without conflict");
+
+  // 9. P2 leaves lobby via LEAVE_ROOM -> Player removed from lobby
+  await server.onMessage(
+    JSON.stringify({ type: "LEAVE_ROOM" }),
+    p2 as any
+  );
+  if (server.state.players["p2"]) {
+    throw new Error("LEAVE_ROOM did not remove player from lobby!");
+  }
+  console.log("✅ LEAVE_ROOM removed player from lobby");
+
+  // 10. Connect P3 with "Speedy Pete" (freed up after P2 left) -> Must succeed
+  const p3 = new MockConnection("p3");
+  await server.onConnect(p3 as any, {
+    request: { url: "http://localhost:1999/party/name-room?sessionId=p3&name=Speedy%20Pete" },
+  } as any);
+  if (server.state.players["p3"]?.name !== "Speedy Pete") {
+    throw new Error(`Expected P3 name "Speedy Pete", got ${server.state.players["p3"]?.name}`);
+  }
+  console.log("✅ Freed name 'Speedy Pete' can now be taken by a new player");
+
+  console.log("✅ All unique name tests passed successfully!");
+}
+
 async function main() {
   await runTest();
   await runOpenModeTest();
   await runRandomizationTest();
   await runPlayerLimitTests();
+  await runUniqueNameTests();
   console.log("\n🎉 ALL TESTS AND SUITES PASSED SUCCESSFULLY!");
 }
 

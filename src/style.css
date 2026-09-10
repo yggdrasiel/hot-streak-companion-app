@@ -261,6 +261,35 @@ h1, h2, h3, h4, .brand-title {
   box-shadow: 0 0 0 3px rgba(255, 183, 3, 0.15);
 }
 
+.text-input.input-error {
+  border-color: var(--color-red) !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.25) !important;
+  animation: input-shake 0.35s ease-in-out;
+}
+
+@keyframes input-shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-5px); }
+  40%, 80% { transform: translateX(5px); }
+}
+
+.input-error-msg {
+  color: #f87171;
+  font-size: 0.82rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+  animation: fade-in 0.2s ease;
+}
+
+.required-mark {
+  color: #f87171;
+  font-weight: 800;
+  margin-left: 2px;
+}
+
 /* Host Floating Bar */
 .host-action-bar {
   position: fixed;

@@ -35,8 +35,11 @@ let currentState: GameState | null = null;
 type StateListener = (state: GameState) => void;
 type EventListener = (message: ServerMessage) => void;
 
+type ErrorListener = (message: string) => void;
+
 const stateListeners: Set<StateListener> = new Set();
 const eventListeners: Set<EventListener> = new Set();
+const errorListeners: Set<ErrorListener> = new Set();
 
 export function getState(): GameState | null {
   return currentState;
@@ -55,6 +58,11 @@ export function subscribeEvent(listener: EventListener): () => void {
   return () => eventListeners.delete(listener);
 }
 
+export function subscribeError(listener: ErrorListener): () => void {
+  errorListeners.add(listener);
+  return () => errorListeners.delete(listener);
+}
+
 export function connectToRoom(roomCode: string, playerName?: string, isPlayingHost?: boolean) {
   if (socket) {
     socket.close();
@@ -69,12 +77,20 @@ export function connectToRoom(roomCode: string, playerName?: string, isPlayingHo
 
   const host = localStorage.getItem("hot_streak_party_host") || DEFAULT_PARTYKIT_HOST;
 
+  const query: Record<string, string> = {
+    sessionId,
+  };
+  if (playerName) {
+    query.name = playerName;
+  }
+  if (typeof isPlayingHost === "boolean") {
+    query.isPlayingHost = String(isPlayingHost);
+  }
+
   socket = new PartySocket({
     host,
     room: roomCode.toUpperCase(),
-    query: {
-      sessionId,
-    },
+    query,
   });
 
   socket.addEventListener("open", () => {
@@ -100,7 +116,17 @@ export function connectToRoom(roomCode: string, playerName?: string, isPlayingHo
         eventListeners.forEach((fn) => fn(msg));
       } else if (msg.type === "ERROR") {
         console.warn("[Server Error]", msg.payload.message);
-        alert(msg.payload.message);
+        if (errorListeners.size > 0) {
+          errorListeners.forEach((fn) => fn(msg.payload.message));
+        } else {
+          alert(msg.payload.message);
+        }
+        if (
+          msg.payload.message.toLowerCase().includes("name") ||
+          msg.payload.message.toLowerCase().includes("taken")
+        ) {
+          disconnectFromRoom();
+        }
       }
     } catch (e) {
       console.error("[PartySocket] Failed to parse message", e);
