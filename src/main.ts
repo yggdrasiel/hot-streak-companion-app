@@ -91,7 +91,7 @@ function init() {
 
   // Reaction banner helper
   function showReactionBanner(
-    type: "cheer" | "heartbreak" | "sidebet",
+    type: "cheer" | "silver" | "bronze" | "heartbreak" | "sidebet",
     icon: string,
     title: string,
     subtitle: string
@@ -157,43 +157,162 @@ function init() {
       );
       const mascotInfo = MASCOT_CONFIG[mascotId];
 
+      const PHRASES_1ST = [
+        "GOLDEN GLORY! 🏆",
+        "LEADING THE PACK! 🥇",
+        "FIRST PLACE CASH COW! 💰",
+        "SPEED DEMON IN 1ST! ⚡",
+        "PURE UNSTOPPABLE PACE! 🔥",
+        "CALL THE BANK! 🤑",
+        "FRONT RUNNER DOMINANCE! 👑",
+        "BLOWING AWAY THE FIELD! 🚀",
+        "RIGHT WHERE YOU WANT 'EM! 🎯",
+        "CHAMPIONSHIP DRIVE! 🌟",
+        "THE SWEET TASTE OF VICTORY! 🍾",
+        "ABSOLUTE MASTERCLASS! 🎩",
+        "TOP OF THE PODIUM! 🥇",
+        "FLYING HIGH IN 1ST! 🦅",
+        "CASHING THE MAX PAYOUT! 💵",
+      ];
+
+      const SUBTITLES_1ST = (name: string) => [
+        `${name} blasts across the line in 1st place! Maximum payout locked!`,
+        `${name} leaves everyone in the dust! Golden ticket vibes!`,
+        `Nobody could touch ${name}! You're cashing the top prize!`,
+        `${name} takes the crown! Your wallet is smiling!`,
+        `Pure speed from ${name}! 1st place podium secured!`,
+        `What a run by ${name}! First place honors belong to you!`,
+        `A flawless sprint! ${name} delivers the gold!`,
+      ];
+
+      const PHRASES_2ND = [
+        "SILVER STRIKE! 🥈",
+        "PODIUM FINISH! 🥈",
+        "SOLID SECOND PLACE! 💵",
+        "RUNNER-UP RICHES! 🥈",
+        "ALMOST TOOK THE CROWN! ✨",
+        "CASHING ON THE PODIUM! 💰",
+        "SWEET SILVER PAYOUT! 🪙",
+        "HOT ON THEIR HEELS! 🥈",
+        "SECOND PLACE SECURED! 🎯",
+        "STILL IN THE MONEY! 🤑",
+        "A VALIANT SILVER RUN! 🥈",
+        "SILVER MEDAL SECURED! 🥈",
+        "BIG RUNNER-UP PAYDAY! 💸",
+        "TAKING HOME THE SILVER! 🥈",
+        "STRONG PODIUM SHOWING! 🏎️",
+      ];
+
+      const SUBTITLES_2ND = (name: string) => [
+        `${name} grabs 2nd place! Silver on the podium means cash in your pocket!`,
+        `${name} fights hard for the runner-up spot! Ticket successfully cashed!`,
+        `Just inches from 1st, but 2nd place still brings in a sweet payout for ${name}!`,
+        `Strong finish by ${name}! You're firmly on the podium!`,
+        `${name} crosses in 2nd! Reliable returns for your bankroll!`,
+        `A fantastic silver finish for ${name}! Money in the bank!`,
+        `${name} delivers a handsome silver payout! Great bet!`,
+      ];
+
+      const PHRASES_3RD = [
+        "BRONZE ON THE WIRE! 🥉",
+        "PODIUM SQUEAKER! 🥉",
+        "SNUCK ONTO THE PODIUM! 🥉",
+        "STILL CASHING IN! 💵",
+        "SAVED BY THE BRONZE! 🥉",
+        "THIRD PLACE CLUTCH! 🥉",
+        "AVOIDED THE DISASTER! 🛡️",
+        "HONORABLE BRONZE! 🥉",
+        "EVERY DOLLAR COUNTS! 💰",
+        "AT LEAST IT WASN'T 4TH! 😅",
+        "PODIUM SCRAPPER! 🥉",
+        "CLUTCH BRONZE FINISH! 🥉",
+        "SLIPPED ONTO THE PODIUM! 🥉",
+        "THE SWEET TASTE OF BRONZE! 🥉",
+        "THIRD PLACE SAVES THE DAY! 🥉",
+      ];
+
+      const SUBTITLES_3RD = (name: string) => [
+        `${name} hung on for 3rd place! Any podium finish pays out!`,
+        `${name} slides into bronze! Better than 4th by a mile!`,
+        `Clutch effort from ${name}! You take home 3rd place winnings!`,
+        `${name} secures the final podium spot! Your ticket stays alive!`,
+        `A nail-biter finish, but ${name} clinches the bronze medal!`,
+        `Phew! ${name} sneaks into 3rd to keep your bankroll growing!`,
+        `Never in doubt (okay maybe a little)! ${name} takes bronze!`,
+      ];
+
+      const PHRASES_4TH = [
+        "TOTAL HEARTBREAK! 😭",
+        "DOWN GOES YOUR BET! 💔",
+        "DEAD LAST DISASTER! 💀",
+        "CURSED FINISH! 🛑",
+        "TORCHED TICKET! 🔥",
+        "THE WHEELS CAME OFF! 📉",
+        "DISQUALIFIED FROM GLORY! 🪦",
+        "PAIN. AGONY. DEFEAT. 😭",
+        "FLAMED OUT AT THE BACK! 💥",
+        "DON'T LOOK AT THE SCOREBOARD! 🙈",
+        "ABSOLUTE BOTTLER! 🍼",
+        "THE SHAME OF 4TH PLACE! 📉",
+        "OFF THE RAILS! 🚂",
+        "ABSOLUTE CATASTROPHE! 💥",
+        "INTO THE DUMPSTER! 🗑️",
+      ];
+
+      const SUBTITLES_4TH = (name: string) => [
+        `${name} crumbled into 4th place! Prepare for the penalty!`,
+        `${name} ran out of gas completely! Ticket headed for the shredder!`,
+        `A heartbreaking last-place finish for ${name}! Ouch!`,
+        `${name} takes the wooden spoon. Your bankroll takes a hit!`,
+        `From contender to pretender: ${name} ends up in the cellar!`,
+        `Disaster strikes! ${name} brings up the rear!`,
+        `Someone check ${name}'s shoes... dead last finish!`,
+      ];
+
+      function pickRandom<T>(arr: T[]): T {
+        return arr[Math.floor(Math.random() * arr.length)];
+      }
+
       if (myMascotBet) {
-        if (position === 4) {
+        if (position === 1) {
+          // 1st Place cheering & Confetti!
+          fireConfetti(2500);
+          showReactionBanner(
+            "cheer",
+            "🏆",
+            pickRandom(PHRASES_1ST),
+            pickRandom(SUBTITLES_1ST(mascotInfo.name))
+          );
+        } else if (position === 2) {
+          // 2nd Place Silver
+          fireConfetti(1500);
+          showReactionBanner(
+            "silver",
+            "🥈",
+            pickRandom(PHRASES_2ND),
+            pickRandom(SUBTITLES_2ND(mascotInfo.name))
+          );
+        } else if (position === 3) {
+          // 3rd Place Bronze
+          fireConfetti(1000);
+          showReactionBanner(
+            "bronze",
+            "🥉",
+            pickRandom(PHRASES_3RD),
+            pickRandom(SUBTITLES_3RD(mascotInfo.name))
+          );
+        } else if (position === 4) {
           // Heartbreak & Screen Shake!
           document.body.classList.remove("screen-shake");
           void document.body.offsetWidth;
           document.body.classList.add("screen-shake");
           setTimeout(() => document.body.classList.remove("screen-shake"), 600);
 
-          const phrases = [
-            "Down goes your bet!",
-            "Heartbreak!",
-            "Oh no! Disaster!",
-            "Cursed finish!",
-          ];
-          const chosenTitle = phrases[Math.floor(Math.random() * phrases.length)];
           showReactionBanner(
             "heartbreak",
             "💔",
-            `${chosenTitle} 😭`,
-            `${mascotInfo.name} was placed in 4th / DQ!`
-          );
-        } else if (position === 1) {
-          // 1st Place cheering & Confetti!
-          fireConfetti(2500);
-
-          const phrases = [
-            "Looking good!",
-            "Leading the pack!",
-            "Pure speed!",
-            "Right where you want 'em!",
-          ];
-          const chosenTitle = phrases[Math.floor(Math.random() * phrases.length)];
-          showReactionBanner(
-            "cheer",
-            "🏆",
-            `${chosenTitle} 🥇`,
-            `${mascotInfo.name} is currently in 1st Place!`
+            pickRandom(PHRASES_4TH),
+            pickRandom(SUBTITLES_4TH(mascotInfo.name))
           );
         }
       }
@@ -214,6 +333,66 @@ function init() {
       const me = state ? state.players[sessionId] : null;
       const mySideBet = me?.currentBets.find((b) => b.type === "side");
 
+      const PHRASES_SIDE_WIN = [
+        "YOU WON YOUR SIDE BET! 💰",
+        "CHA-CHING! CASHED IN! 🤑",
+        "BOOM! TICKET CASHED! 💸",
+        "CALLED IT! YOU WON! 🎉",
+        "PROPHETIC BETTING! 🔮",
+        "POCKETS GETTING HEAVIER! 💰",
+        "SIDE BET MAGIC! ✨",
+        "EZ MONEY! 💵",
+        "THE PROPHECY CAME TRUE! 📜",
+        "PURE GENIUS READ! 🧠",
+        "BANK IT AND SMILE! 🎉",
+        "NEVER IN DOUBT! 😎",
+      ];
+
+      const SUBTITLES_SIDE_WIN_YES = [
+        "The pure chaos actually unfolded! Your YES ticket hits big!",
+        "Total bedlam on the track! That crazy stunt came through for you!",
+        "They said it wouldn't happen, but it DID! YES pays out in full!",
+        "Stunt accomplished! The track goes wild and your wallet gets fatter!",
+      ];
+
+      const SUBTITLES_SIDE_WIN_NO = [
+        "The stunt was a dud! Nothing happened and your NO ticket pays out in full!",
+        "Clean, boring, and profitable! Your NO bet cashes without a hitch!",
+        "Order was maintained! Your NO ticket pays out cleanly!",
+        "False alarm! No chaos today, and your NO ticket cashes in!",
+      ];
+
+      const PHRASES_SIDE_LOSE = [
+        "YOU LOST YOUR SIDE BET! 💀",
+        "BUSTED! TICKET TORCHED! 💥",
+        "TOUGH BREAK! YOU LOST! 😭",
+        "RIPPED UP YOUR TICKET! 📉",
+        "BETRAYED BY THE ODDS! 💔",
+        "TOTAL BLUNDER! 🛑",
+        "FLUSHED DOWN THE DRAIN! 🚽",
+        "BETTING THE WRONG HORSE! 🤦",
+        "THE HOUSE ALWAYS WINS! 🏦",
+        "OOF! THAT'S GONNA STING! 🤕",
+        "NOT EVEN CLOSE! 🙈",
+        "SHREDDED AT THE WINDOW! ✂️",
+      ];
+
+      const SUBTITLES_SIDE_LOSE_YES = [
+        "It didn't happen! The scenario never went down — your YES ticket is toast!",
+        "Zero chaos this time. The track stayed quiet and your YES ticket busted!",
+        "No crazy antics today. Your YES ticket goes straight to the trash!",
+      ];
+
+      const SUBTITLES_SIDE_LOSE_NO = [
+        "Disaster struck! They actually pulled it off — your NO ticket went up in smoke!",
+        "Unbelievable! It actually happened and torched your NO bet!",
+        "The chaos couldn't be stopped! Your NO ticket is ruined!",
+      ];
+
+      function pickRandom<T>(arr: T[]): T {
+        return arr[Math.floor(Math.random() * arr.length)];
+      }
+
       if (mySideBet) {
         const myPick = mySideBet.answer; // "yes" | "no"
         const isWinning =
@@ -222,38 +401,30 @@ function init() {
 
         if (isWinning) {
           fireConfetti(2200);
-          const winPhrases = [
-            "YOU WON YOUR SIDE BET! 💰",
-            "CHA-CHING! CASHED IN! 🤑",
-            "BOOM! TICKET CASHED! 💸",
-            "CALLED IT! YOU WON! 🎉",
-          ];
-          const chosenTitle = winPhrases[Math.floor(Math.random() * winPhrases.length)];
-          const chosenSubtitle =
-            myPick === "yes"
-              ? "The chaos actually happened! Your YES ticket hits for a sweet payout!"
-              : "The stunt was a dud! Nothing happened and your NO ticket pays out in full!";
-
-          showReactionBanner("sidebet", "💰", chosenTitle, chosenSubtitle);
+          const chosenSubtitle = pickRandom(
+            myPick === "yes" ? SUBTITLES_SIDE_WIN_YES : SUBTITLES_SIDE_WIN_NO
+          );
+          showReactionBanner(
+            "sidebet",
+            "💰",
+            pickRandom(PHRASES_SIDE_WIN),
+            chosenSubtitle
+          );
         } else {
           document.body.classList.remove("screen-shake");
           void document.body.offsetWidth;
           document.body.classList.add("screen-shake");
           setTimeout(() => document.body.classList.remove("screen-shake"), 600);
 
-          const losePhrases = [
-            "YOU LOST YOUR SIDE BET! 💀",
-            "BUSTED! TICKET TORCHED! 💥",
-            "TOUGH BREAK! YOU LOST! 😭",
-            "RIPPED UP YOUR TICKET! 📉",
-          ];
-          const chosenTitle = losePhrases[Math.floor(Math.random() * losePhrases.length)];
-          const chosenSubtitle =
-            myPick === "yes"
-              ? "It didn't happen! The scenario never went down — your YES ticket is toast!"
-              : "Disaster struck! They actually pulled it off — your NO ticket went up in smoke!";
-
-          showReactionBanner("heartbreak", "💀", chosenTitle, chosenSubtitle);
+          const chosenSubtitle = pickRandom(
+            myPick === "yes" ? SUBTITLES_SIDE_LOSE_YES : SUBTITLES_SIDE_LOSE_NO
+          );
+          showReactionBanner(
+            "heartbreak",
+            "💀",
+            pickRandom(PHRASES_SIDE_LOSE),
+            chosenSubtitle
+          );
         }
       } else {
         // Universal announcement banner (for Host or spectators/players without side bet)
