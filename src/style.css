@@ -95,6 +95,7 @@ h1, h2, h3, h4, .brand-title {
   font-size: 1.25rem;
   background: linear-gradient(135deg, #ffb703, #fb8500, #ef4444);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
   display: flex;
   align-items: center;
@@ -161,6 +162,7 @@ h1, h2, h3, h4, .brand-title {
   line-height: 1.1;
   background: linear-gradient(135deg, #fff 30%, #ffd166 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
