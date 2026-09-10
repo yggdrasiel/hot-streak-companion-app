@@ -12,6 +12,7 @@ import {
   type Bet,
 } from "./socket";
 import { getLifeOutcome } from "./lifeOutcomes";
+import { fireConfetti } from "./confetti";
 
 // App Root
 const app = document.getElementById("app")!;
@@ -22,6 +23,7 @@ let selectedDraftBet: {
   category: MascotId | "yes" | "no";
   isRisky: boolean;
 } | null = null;
+let selectedMascotForHostPlacement: MascotId | null = null;
 
 // Mascot metadata
 const MASCOT_CONFIG: Record<
@@ -86,12 +88,190 @@ function init() {
     renderApp(state);
   });
 
+  // Reaction banner helper
+  function showReactionBanner(
+    type: "cheer" | "heartbreak" | "sidebet",
+    icon: string,
+    title: string,
+    subtitle: string
+  ) {
+    let container = document.getElementById("live-reaction-container");
+    if (!container) {
+      container = document.createElement("div");
+      container.id = "live-reaction-container";
+      document.body.appendChild(container);
+    }
+
+    // Dismiss existing banners to prevent clutter
+    Array.from(container.children).forEach((child) => {
+      child.classList.add("exit");
+      setTimeout(() => child.remove(), 250);
+    });
+
+    const banner = document.createElement("div");
+    banner.className = `reaction-banner reaction-${type}`;
+    banner.innerHTML = `
+      <div class="reaction-icon">${icon}</div>
+      <div class="reaction-text">
+        <div class="reaction-title">${title}</div>
+        <div class="reaction-subtitle">${subtitle}</div>
+      </div>
+    `;
+
+    banner.addEventListener("click", () => {
+      banner.classList.add("exit");
+      setTimeout(() => banner.remove(), 250);
+    });
+
+    container.appendChild(banner);
+
+    setTimeout(() => {
+      if (banner.parentNode) {
+        banner.classList.add("exit");
+        setTimeout(() => banner.remove(), 250);
+      }
+    }, 3200);
+  }
+
   // Listen to live events
   subscribeEvent((event) => {
     if (event.type === "LIVE_RACER_PLACED" || event.type === "LIVE_SIDE_BET_UPDATED") {
       // Haptic feedback if supported on mobile
       if ("vibrate" in navigator) {
-        navigator.vibrate(50);
+        navigator.vibrate(60);
+      }
+    }
+
+    if (event.type === "LIVE_RACER_PLACED") {
+      const { position, mascotId } = event.payload;
+      if (!mascotId) return;
+
+      const state = getState();
+      if (!state) return;
+      const me = state.players[sessionId];
+      if (!me) return;
+
+      const myMascotBet = me.currentBets.find(
+        (b) => b.type === "mascot" && b.mascotId === mascotId
+      );
+      const mascotInfo = MASCOT_CONFIG[mascotId];
+
+      if (myMascotBet) {
+        if (position === 4) {
+          // Heartbreak & Screen Shake!
+          document.body.classList.remove("screen-shake");
+          void document.body.offsetWidth;
+          document.body.classList.add("screen-shake");
+          setTimeout(() => document.body.classList.remove("screen-shake"), 600);
+
+          const phrases = [
+            "Down goes your bet!",
+            "Heartbreak!",
+            "Oh no! Disaster!",
+            "Cursed finish!",
+          ];
+          const chosenTitle = phrases[Math.floor(Math.random() * phrases.length)];
+          showReactionBanner(
+            "heartbreak",
+            "💔",
+            `${chosenTitle} 😭`,
+            `${mascotInfo.name} was placed in 4th / DQ!`
+          );
+        } else if (position === 1) {
+          // 1st Place cheering & Confetti!
+          fireConfetti(2500);
+
+          const phrases = [
+            "Looking good!",
+            "Leading the pack!",
+            "Pure speed!",
+            "Right where you want 'em!",
+          ];
+          const chosenTitle = phrases[Math.floor(Math.random() * phrases.length)];
+          showReactionBanner(
+            "cheer",
+            "🏆",
+            `${chosenTitle} 🥇`,
+            `${mascotInfo.name} is currently in 1st Place!`
+          );
+        }
+      }
+    } else if (event.type === "LIVE_SIDE_BET_UPDATED") {
+      const { sideBetOccurred } = event.payload;
+
+      if (sideBetOccurred === null) {
+        showReactionBanner(
+          "sidebet",
+          "⏳",
+          "Side Bet Pending...",
+          "Side bet outcome has been reset to pending."
+        );
+        return;
+      }
+
+      const state = getState();
+      const me = state ? state.players[sessionId] : null;
+      const mySideBet = me?.currentBets.find((b) => b.type === "side");
+
+      if (mySideBet) {
+        const myPick = mySideBet.answer; // "yes" | "no"
+        const isWinning =
+          (myPick === "yes" && sideBetOccurred === true) ||
+          (myPick === "no" && sideBetOccurred === false);
+
+        if (isWinning) {
+          fireConfetti(2200);
+          const winPhrases = [
+            "YOU WON YOUR SIDE BET! 💰",
+            "CHA-CHING! CASHED IN! 🤑",
+            "BOOM! TICKET CASHED! 💸",
+            "CALLED IT! YOU WON! 🎉",
+          ];
+          const chosenTitle = winPhrases[Math.floor(Math.random() * winPhrases.length)];
+          const chosenSubtitle =
+            myPick === "yes"
+              ? "The chaos actually happened! Your YES ticket hits for a sweet payout!"
+              : "The stunt was a dud! Nothing happened and your NO ticket pays out in full!";
+
+          showReactionBanner("sidebet", "💰", chosenTitle, chosenSubtitle);
+        } else {
+          document.body.classList.remove("screen-shake");
+          void document.body.offsetWidth;
+          document.body.classList.add("screen-shake");
+          setTimeout(() => document.body.classList.remove("screen-shake"), 600);
+
+          const losePhrases = [
+            "YOU LOST YOUR SIDE BET! 💀",
+            "BUSTED! TICKET TORCHED! 💥",
+            "TOUGH BREAK! YOU LOST! 😭",
+            "RIPPED UP YOUR TICKET! 📉",
+          ];
+          const chosenTitle = losePhrases[Math.floor(Math.random() * losePhrases.length)];
+          const chosenSubtitle =
+            myPick === "yes"
+              ? "It didn't happen! The scenario never went down — your YES ticket is toast!"
+              : "Disaster struck! They actually pulled it off — your NO ticket went up in smoke!";
+
+          showReactionBanner("heartbreak", "💀", chosenTitle, chosenSubtitle);
+        }
+      } else {
+        // Universal announcement banner (for Host or spectators/players without side bet)
+        if (sideBetOccurred === true) {
+          fireConfetti(1800);
+          showReactionBanner(
+            "sidebet",
+            "💥",
+            "SIDE BET: IT HAPPENED! (YES)",
+            "The event went down! All YES bets are officially winners!"
+          );
+        } else {
+          showReactionBanner(
+            "heartbreak",
+            "🛑",
+            "SIDE BET: DID NOT HAPPEN! (NO)",
+            "The stunt was a dud! All NO bets are officially winners!"
+          );
+        }
       }
     }
   });
@@ -103,6 +283,11 @@ function init() {
 
 function renderApp(state: GameState | null) {
   if (!state) return;
+
+  // Don't blow away the screen while the host is actively dragging the race slider
+  if (state.phase === "LOBBY" && document.activeElement?.id === "slider-races") {
+    return;
+  }
 
   switch (state.phase) {
     case "LOBBY":
@@ -337,7 +522,7 @@ async function renderLobbyScreen(state: GameState) {
           <div class="input-group" style="margin-top: 6px;">
             <div style="display:flex; justify-content:space-between;">
               <label class="input-label">Total Races</label>
-              <span style="font-weight: 800; color: var(--color-gold);">${state.totalRaces}</span>
+              <span id="slider-races-val" style="font-weight: 800; color: var(--color-gold);">${state.totalRaces}</span>
             </div>
             <input
               id="slider-races"
@@ -421,7 +606,15 @@ async function renderLobbyScreen(state: GameState) {
       sendMessage({ type: "UPDATE_CONFIG", payload: { mode: "open" } });
     });
 
-    document.getElementById("slider-races")?.addEventListener("change", (e) => {
+    const sliderRaces = document.getElementById("slider-races") as HTMLInputElement | null;
+    const sliderValDisplay = document.getElementById("slider-races-val");
+    sliderRaces?.addEventListener("input", (e) => {
+      const val = Number((e.target as HTMLInputElement).value);
+      if (sliderValDisplay) {
+        sliderValDisplay.textContent = String(val);
+      }
+    });
+    sliderRaces?.addEventListener("change", (e) => {
       const val = Number((e.target as HTMLInputElement).value);
       sendMessage({ type: "UPDATE_CONFIG", payload: { totalRaces: val } });
     });
@@ -757,9 +950,8 @@ function renderBettingScreen(state: GameState) {
 
   // Host force start
   document.getElementById("btn-force-start-race")?.addEventListener("click", () => {
-    // Transition to race
-    if (confirm("Force end betting and move to the race?")) {
-      // In server, if bets are completed it moves automatically, but host can advance
+    if (confirm("Force end betting and advance to the race?")) {
+      sendMessage({ type: "FORCE_START_RACE" });
     }
   });
 }
@@ -899,42 +1091,82 @@ function openDraftModal(state: GameState, category: MascotId | "yes" | "no") {
 
 function renderRaceInputScreen(state: GameState) {
   const isHost = state.hostId === sessionId;
+  const me = state.players[sessionId];
   const placements = state.livePlacements;
+
+  // Track placed mascots
+  const placedMap: Partial<Record<MascotId, 1 | 2 | 3 | 4>> = {};
+  for (const pos of [1, 2, 3, 4] as const) {
+    if (placements[pos]) {
+      placedMap[placements[pos]!] = pos;
+    }
+  }
+
+  const allPositionsPlaced = [1, 2, 3, 4].every(
+    (pos) => !!placements[pos as 1 | 2 | 3 | 4]
+  );
+  const sideBetConfirmed = state.sideBetOccurred !== null;
+  const canFinalize = allPositionsPlaced && sideBetConfirmed;
+
+  // Active bets for the current user
+  const myBets = me?.currentBets || [];
 
   const renderPositionSlot = (pos: 1 | 2 | 3 | 4) => {
     const assigned = placements[pos];
     const mascot = assigned ? MASCOT_CONFIG[assigned] : null;
+    const isTarget = isHost && selectedMascotForHostPlacement !== null && !assigned;
+
+    const rankLabels = {
+      1: { title: "1ST", sub: "Gold" },
+      2: { title: "2ND", sub: "Silver" },
+      3: { title: "3RD", sub: "Bronze" },
+      4: { title: "4TH", sub: "DQ / Last" },
+    }[pos];
 
     return `
-      <div class="podium-slot">
-        <div class="podium-rank">${pos}</div>
-        <div class="podium-mascot">
+      <div
+        class="podium-slot rank-${pos} ${isHost && !assigned ? "clickable" : ""} ${isTarget ? "target-highlight" : ""}"
+        data-slot-pos="${pos}"
+      >
+        <div class="podium-rank-badge">
+          <div class="podium-rank">${rankLabels.title}</div>
+          <div class="podium-rank-sub">${rankLabels.sub}</div>
+        </div>
+
+        <div class="podium-mascot-content">
           ${
             mascot
-              ? `<span style="font-size: 1.5rem;">${mascot.icon}</span> ${mascot.name}`
-              : `<span style="color: var(--text-muted); font-size: 0.9rem; font-weight: normal;">Not placed yet</span>`
+              ? `
+            <div class="mascot-avatar">${mascot.icon}</div>
+            <div class="mascot-name-tag">
+              <strong>${mascot.name}</strong>
+              <span>${mascot.desc}</span>
+            </div>
+          `
+              : `
+            <div class="slot-empty-notice">
+              ${
+                isHost
+                  ? selectedMascotForHostPlacement
+                    ? `👉 Tap here to assign <strong>${MASCOT_CONFIG[selectedMascotForHostPlacement].name}</strong>`
+                    : `<span>⚪ Empty Slot (Select racer below)</span>`
+                  : `<span>⏳ Waiting for finish placement...</span>`
+              }
+            </div>
+          `
           }
         </div>
+
         ${
-          isHost
+          isHost && assigned
             ? `
-          <div style="display: flex; gap: 4px;">
-            ${(["gobbler", "hurley", "dangle", "mum"] as MascotId[])
-              .map((m) => {
-                const isCurrent = assigned === m;
-                return `
-                  <button
-                    class="btn ${isCurrent ? "btn-primary" : "btn-secondary"}"
-                    data-place-pos="${pos}"
-                    data-place-mascot="${m}"
-                    style="padding: 4px 8px; min-height: unset; font-size: 0.85rem;"
-                  >
-                    ${MASCOT_CONFIG[m].icon}
-                  </button>
-                `;
-              })
-              .join("")}
-          </div>
+          <button
+            class="btn-slot-remove"
+            data-remove-pos="${pos}"
+            title="Remove racer from this slot"
+          >
+            ✕
+          </button>
         `
             : ""
         }
@@ -951,12 +1183,81 @@ function renderRaceInputScreen(state: GameState) {
     <main class="screen">
       <div class="hero-box" style="padding-bottom: 0;">
         <h2 style="font-size: 1.8rem;">🏁 THE RACE IS ON!</h2>
-        <p class="hero-subtitle">Dealer is flipping cards and moving mascots on the board.</p>
+        <p class="hero-subtitle">
+          ${
+            isHost
+              ? "Assign finishes as cards are flipped on the table."
+              : "Watch the board live as the dealer flips cards!"
+          }
+        </p>
       </div>
 
-      <!-- Live Positions Board -->
+      <!-- Player Bets Reminder (if participating) -->
+      ${
+        myBets.length > 0
+          ? `
+        <div class="card" style="border: 1px solid rgba(255, 183, 3, 0.35); background: rgba(255, 183, 3, 0.06); padding: 12px 16px;">
+          <div style="font-size: 0.75rem; font-weight: 800; color: var(--color-gold); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">
+            🎯 Your Active Wagers This Race
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            ${myBets
+              .map((b) => {
+                if (b.type === "mascot") {
+                  const m = MASCOT_CONFIG[b.mascotId];
+                  return `
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem;">
+                      <div>
+                        <span>${m.icon}</span> <strong>${m.name}</strong>
+                        <span style="font-size: 0.75rem; color: ${b.isRisky ? "var(--color-orange)" : "var(--color-green)"}; margin-left: 4px;">
+                          (${b.isRisky ? "🔥 Risky" : "🛡️ Safe"}${b.tier ? ` T${b.tier}` : ""}${b.isDoubled ? " ✖2" : ""})
+                        </span>
+                      </div>
+                      <span style="font-size: 0.8rem; color: var(--text-muted);">Goal: 1st-3rd</span>
+                    </div>
+                  `;
+                } else {
+                  const sideWon =
+                    state.sideBetOccurred !== null &&
+                    ((b.answer === "yes" && state.sideBetOccurred === true) ||
+                      (b.answer === "no" && state.sideBetOccurred === false));
+
+                  return `
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem;">
+                      <div>
+                        <span>🎲</span> <strong>Side Bet: ${b.answer.toUpperCase()}</strong>
+                        <span style="font-size: 0.75rem; color: ${b.isRisky ? "var(--color-orange)" : "var(--color-green)"}; margin-left: 4px;">
+                          (${b.isRisky ? "🔥 Risky" : "🛡️ Safe"}${b.tier ? ` T${b.tier}` : ""}${b.isDoubled ? " ✖2" : ""})
+                        </span>
+                      </div>
+                      <span style="font-size: 0.8rem; font-weight: 800;">
+                        ${
+                          state.sideBetOccurred === null
+                            ? `<span style="color: var(--text-muted);">Awaiting flip</span>`
+                            : sideWon
+                            ? `<span style="color: var(--color-green);">💰 WON!</span>`
+                            : `<span style="color: var(--color-red);">💀 BUSTED!</span>`
+                        }
+                      </span>
+                    </div>
+                  `;
+                }
+              })
+              .join("")}
+          </div>
+        </div>
+      `
+          : ""
+      }
+
+      <!-- Live Finish Slots Board -->
       <div class="card">
-        <h3 style="font-size: 1.05rem; color: var(--color-gold);">Podium & Finish Placements</h3>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
+          <h3 style="font-size: 1.05rem; color: var(--color-gold);">Podium & Finish Slots</h3>
+          <span style="font-size: 0.75rem; color: var(--text-muted);">
+            ${Object.keys(placements).length}/4 Placed
+          </span>
+        </div>
         <div class="racetrack">
           ${renderPositionSlot(1)}
           ${renderPositionSlot(2)}
@@ -965,26 +1266,94 @@ function renderRaceInputScreen(state: GameState) {
         </div>
       </div>
 
+      <!-- Host Mascot Roster (Tap-to-Assign) -->
+      ${
+        isHost
+          ? `
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+            <h3 style="font-size: 1.05rem; color: var(--color-gold);">Select Racer to Place</h3>
+            <span style="font-size: 0.75rem; color: var(--text-muted);">
+              ${
+                selectedMascotForHostPlacement
+                  ? `👉 Selected: ${MASCOT_CONFIG[selectedMascotForHostPlacement].name}`
+                  : "Tap a mascot to select"
+              }
+            </span>
+          </div>
+          <div class="roster-grid">
+            ${(["gobbler", "hurley", "dangle", "mum"] as MascotId[])
+              .map((m) => {
+                const placedPos = placedMap[m];
+                const isPlaced = placedPos !== undefined;
+                const isSelected = selectedMascotForHostPlacement === m;
+                const config = MASCOT_CONFIG[m];
+
+                return `
+                  <div
+                    class="roster-card ${m} ${isSelected ? "selected" : ""} ${isPlaced ? "placed" : ""}"
+                    data-roster-mascot="${m}"
+                  >
+                    <span style="font-size: 1.6rem;">${config.icon}</span>
+                    <div style="display:flex; flex-direction:column; overflow:hidden;">
+                      <strong style="font-size: 0.95rem; white-space:nowrap; text-overflow:ellipsis;">${config.name}</strong>
+                      <span style="font-size: 0.72rem; color: var(--text-muted);">
+                        ${isPlaced ? `Placed #${placedPos}` : isSelected ? "Ready to place" : "Tap to pick"}
+                      </span>
+                    </div>
+                    ${isPlaced ? `<span class="roster-badge">#${placedPos}</span>` : ""}
+                  </div>
+                `;
+              })
+              .join("")}
+          </div>
+        </div>
+      `
+          : ""
+      }
+
       <!-- Live Side Bet Status -->
       <div class="card">
         <h3 style="font-size: 1.05rem;">Side Bet Outcome</h3>
-        <div style="display: flex; gap: 8px; align-items: center;">
-          <div style="flex: 1; font-weight: 700;">
+        <div style="display: flex; gap: 10px; align-items: center; margin-top: 6px;">
+          <div style="flex: 1; font-weight: 700; font-size: 0.95rem;">
             Did the side bet scenario occur?
           </div>
           ${
             isHost
               ? `
-            <button id="btn-side-yes" class="btn ${state.sideBetOccurred === true ? "btn-green" : "btn-secondary"}" style="padding: 6px 14px; min-height: unset;">
-              YES
-            </button>
-            <button id="btn-side-no" class="btn ${state.sideBetOccurred === false ? "btn-danger" : "btn-secondary"}" style="padding: 6px 14px; min-height: unset;">
-              NO
-            </button>
+            <div style="display: flex; gap: 8px;">
+              <button
+                id="btn-side-yes"
+                class="btn ${state.sideBetOccurred === true ? "btn-green" : "btn-secondary"}"
+                style="padding: 8px 16px; min-height: unset; font-weight: 800;"
+              >
+                YES
+              </button>
+              <button
+                id="btn-side-no"
+                class="btn ${state.sideBetOccurred === false ? "btn-danger" : "btn-secondary"}"
+                style="padding: 8px 16px; min-height: unset; font-weight: 800;"
+              >
+                NO
+              </button>
+            </div>
           `
               : `
-            <span class="badge ${state.sideBetOccurred === true ? "badge-ready" : state.sideBetOccurred === false ? "badge-host" : ""}">
-              ${state.sideBetOccurred === null ? "PENDING..." : state.sideBetOccurred ? "YES" : "NO"}
+            <span class="badge ${
+              state.sideBetOccurred === true
+                ? "badge-ready"
+                : state.sideBetOccurred === false
+                ? "badge-host"
+                : ""
+            }" style="font-size: 0.95rem; font-weight: 800; padding: 6px 14px;">
+              ${
+                state.sideBetOccurred === null
+                  ? "⏳ AWAITING OUTCOME..."
+                  : state.sideBetOccurred
+                  ? "💥 IT HAPPENED! (YES)"
+                  : "🛑 DID NOT HAPPEN (NO)"
+              }
             </span>
           `
           }
@@ -996,8 +1365,18 @@ function renderRaceInputScreen(state: GameState) {
       isHost
         ? `
       <div class="host-action-bar">
-        <button id="btn-finalize-race" class="btn btn-green btn-full">
-          💰 Finalize Race & Settle Bets
+        <button
+          id="btn-finalize-race"
+          class="btn btn-green btn-full"
+          ${canFinalize ? "" : "disabled"}
+        >
+          ${
+            canFinalize
+              ? "💰 Finalize Race & Calculate Payouts"
+              : !allPositionsPlaced
+              ? `⏳ Place All 4 Racers (${Object.keys(placements).length}/4)`
+              : "⏳ Toggle Side Bet (YES/NO)"
+          }
         </button>
       </div>
     `
@@ -1006,35 +1385,74 @@ function renderRaceInputScreen(state: GameState) {
   `;
 
   if (isHost) {
-    // Placement buttons
-    document.querySelectorAll("[data-place-pos]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const pos = Number(btn.getAttribute("data-place-pos")) as 1 | 2 | 3 | 4;
-        const mascot = btn.getAttribute("data-place-mascot") as MascotId;
+    // 1. Roster click: select / deselect mascot
+    document.querySelectorAll("[data-roster-mascot]").forEach((card) => {
+      card.addEventListener("click", () => {
+        const mascot = card.getAttribute("data-roster-mascot") as MascotId;
+        if (placedMap[mascot] !== undefined) return; // already placed
+
+        if (selectedMascotForHostPlacement === mascot) {
+          selectedMascotForHostPlacement = null;
+        } else {
+          selectedMascotForHostPlacement = mascot;
+        }
+        renderRaceInputScreen(state);
+      });
+    });
+
+    // 2. Slot click: place selected mascot into empty slot
+    document.querySelectorAll(".podium-slot").forEach((slot) => {
+      slot.addEventListener("click", (e) => {
+        // If clicked the remove button, do not handle slot assignment
+        if ((e.target as HTMLElement).closest(".btn-slot-remove")) return;
+
+        const pos = Number(slot.getAttribute("data-slot-pos")) as 1 | 2 | 3 | 4;
+        if (placements[pos]) return; // already filled
+
+        if (selectedMascotForHostPlacement) {
+          sendMessage({
+            type: "LIVE_PLACE_RACER",
+            payload: { position: pos, mascotId: selectedMascotForHostPlacement },
+          });
+          selectedMascotForHostPlacement = null;
+        }
+      });
+    });
+
+    // 3. Remove button click: unassign slot
+    document.querySelectorAll("[data-remove-pos]").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const pos = Number(btn.getAttribute("data-remove-pos")) as 1 | 2 | 3 | 4;
         sendMessage({
           type: "LIVE_PLACE_RACER",
-          payload: { position: pos, mascotId: mascot },
+          payload: { position: pos, mascotId: null },
         });
       });
     });
 
-    // Side bet toggle
+    // 4. Side bet toggles
     document.getElementById("btn-side-yes")?.addEventListener("click", () => {
+      const nextVal = state.sideBetOccurred === true ? null : true;
       sendMessage({
         type: "LIVE_TOGGLE_SIDE_BET",
-        payload: { sideBetOccurred: true },
+        payload: { sideBetOccurred: nextVal },
       });
     });
 
     document.getElementById("btn-side-no")?.addEventListener("click", () => {
+      const nextVal = state.sideBetOccurred === false ? null : false;
       sendMessage({
         type: "LIVE_TOGGLE_SIDE_BET",
-        payload: { sideBetOccurred: false },
+        payload: { sideBetOccurred: nextVal },
       });
     });
 
+    // 5. Finalize Race
     document.getElementById("btn-finalize-race")?.addEventListener("click", () => {
-      sendMessage({ type: "FINALIZE_RACE" });
+      if (canFinalize) {
+        sendMessage({ type: "FINALIZE_RACE" });
+      }
     });
   }
 }
@@ -1069,6 +1487,37 @@ function renderRaceResultsScreen(state: GameState) {
         </div>
         <div style="font-size: 0.95rem; color: var(--text-muted);">
           Total Bankroll: <strong style="color: var(--color-gold);">$${me?.score ?? 0}</strong>
+        </div>
+      </div>
+
+      <!-- Official Finish & Side Bet Breakdown -->
+      <div class="card" style="padding: 14px 16px;">
+        <div style="font-size: 0.75rem; font-weight: 800; color: var(--color-gold); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">
+          🏁 Official Race Outcome
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.88rem;">
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: var(--text-muted);">🥇 1st Place:</span>
+            <strong>${lastRace?.placements[1] ? `${MASCOT_CONFIG[lastRace.placements[1]].icon} ${MASCOT_CONFIG[lastRace.placements[1]].name}` : "-"}</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: var(--text-muted);">🥈 2nd Place:</span>
+            <strong>${lastRace?.placements[2] ? `${MASCOT_CONFIG[lastRace.placements[2]].icon} ${MASCOT_CONFIG[lastRace.placements[2]].name}` : "-"}</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: var(--text-muted);">🥉 3rd Place:</span>
+            <strong>${lastRace?.placements[3] ? `${MASCOT_CONFIG[lastRace.placements[3]].icon} ${MASCOT_CONFIG[lastRace.placements[3]].name}` : "-"}</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: var(--text-muted);">💀 4th (DQ):</span>
+            <strong style="color: #ef4444;">${lastRace?.placements[4] ? `${MASCOT_CONFIG[lastRace.placements[4]].icon} ${MASCOT_CONFIG[lastRace.placements[4]].name}` : "-"}</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between; border-top: 1px solid var(--border-glass); padding-top: 6px; margin-top: 2px;">
+            <span style="color: var(--text-muted);">🎲 Side Bet Result:</span>
+            <strong style="color: ${lastRace?.sideBetOccurred ? "var(--color-green)" : "var(--color-red)"};">
+              ${lastRace?.sideBetOccurred ? "YES — It Actually Happened! 💥" : "NO — Did Not Happen 🛑"}
+            </strong>
+          </div>
         </div>
       </div>
 

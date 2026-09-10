@@ -501,3 +501,310 @@ h1, h2, h3, h4, .brand-title {
   line-height: 1.4;
   color: #ffd166;
 }
+
+/* Button Disabled State */
+.btn:disabled,
+.btn[disabled] {
+  opacity: 0.4;
+  cursor: not-allowed !important;
+  pointer-events: none;
+  filter: grayscale(0.8);
+  box-shadow: none !important;
+}
+
+/* Enhanced Podium & Tap-to-Assign Slots */
+.podium-slot {
+  background: rgba(255, 255, 255, 0.03);
+  border: 2px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  min-height: 64px;
+}
+
+.podium-slot.clickable {
+  cursor: pointer;
+}
+
+.podium-slot.clickable:active {
+  transform: scale(0.98);
+}
+
+.podium-slot.target-highlight {
+  border: 2px dashed var(--color-gold);
+  background: rgba(255, 183, 3, 0.08);
+  box-shadow: 0 0 16px rgba(255, 183, 3, 0.2);
+}
+
+.podium-slot.rank-1 {
+  border-color: rgba(255, 183, 3, 0.6);
+  background: linear-gradient(90deg, rgba(255, 183, 3, 0.12), rgba(255, 255, 255, 0.02));
+}
+.podium-slot.rank-2 {
+  border-color: rgba(203, 213, 225, 0.5);
+  background: linear-gradient(90deg, rgba(203, 213, 225, 0.1), rgba(255, 255, 255, 0.02));
+}
+.podium-slot.rank-3 {
+  border-color: rgba(217, 119, 6, 0.5);
+  background: linear-gradient(90deg, rgba(217, 119, 6, 0.1), rgba(255, 255, 255, 0.02));
+}
+.podium-slot.rank-4 {
+  border-color: rgba(239, 68, 68, 0.5);
+  background: linear-gradient(90deg, rgba(239, 68, 68, 0.12), rgba(255, 255, 255, 0.02));
+}
+
+.podium-rank-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+}
+
+.rank-1 .podium-rank { color: #ffb703; text-shadow: 0 0 10px rgba(255, 183, 3, 0.6); }
+.rank-2 .podium-rank { color: #e2e8f0; text-shadow: 0 0 10px rgba(226, 232, 240, 0.5); }
+.rank-3 .podium-rank { color: #f59e0b; text-shadow: 0 0 10px rgba(245, 158, 11, 0.5); }
+.rank-4 .podium-rank { color: #ef4444; text-shadow: 0 0 10px rgba(239, 68, 68, 0.6); }
+
+.podium-rank-sub {
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.rank-4 .podium-rank-sub {
+  color: #ef4444;
+}
+
+.podium-mascot-content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mascot-avatar {
+  font-size: 1.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.mascot-name-tag {
+  display: flex;
+  flex-direction: column;
+}
+
+.mascot-name-tag strong {
+  font-size: 1.1rem;
+  letter-spacing: 0.02em;
+}
+
+.mascot-name-tag span {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.slot-empty-notice {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  font-style: italic;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-slot-remove {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  min-height: unset;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-slot-remove:active {
+  transform: scale(0.9);
+  background: rgba(239, 68, 68, 0.3);
+}
+
+/* Mascot Selection Roster */
+.roster-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.roster-card {
+  background: var(--bg-card);
+  border: 2px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  user-select: none;
+}
+
+.roster-card:active {
+  transform: scale(0.96);
+}
+
+.roster-card.gobbler { border-left: 4px solid var(--mascot-gobbler); }
+.roster-card.hurley { border-left: 4px solid var(--mascot-hurley); }
+.roster-card.dangle { border-left: 4px solid var(--mascot-dangle); }
+.roster-card.mum { border-left: 4px solid var(--mascot-mum); }
+
+.roster-card.selected {
+  border-color: var(--color-gold) !important;
+  background: rgba(255, 183, 3, 0.15);
+  transform: translateY(-2px);
+  box-shadow: 0 0 16px rgba(255, 183, 3, 0.4);
+}
+
+.roster-card.placed {
+  opacity: 0.35;
+  filter: grayscale(0.8);
+  pointer-events: none;
+}
+
+.roster-card .roster-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
+}
+
+/* Live Reaction Engine Toasts & Banners */
+#live-reaction-container {
+  position: fixed;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  max-width: 440px;
+  z-index: 10000;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.reaction-banner {
+  pointer-events: auto;
+  border-radius: var(--radius-lg);
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(12px);
+  animation: bannerEnter 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.reaction-banner.exit {
+  opacity: 0;
+  transform: translateY(-16px) scale(0.94);
+}
+
+@keyframes bannerEnter {
+  from {
+    opacity: 0;
+    transform: translateY(-25px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Cheering (1st Place) */
+.reaction-cheer {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.95), rgba(5, 150, 105, 0.95));
+  border: 2px solid #34d399;
+  color: #fff;
+}
+
+/* Heartbreak (4th Place / DQ) */
+.reaction-heartbreak {
+  background: linear-gradient(135deg, rgba(220, 38, 38, 0.95), rgba(153, 27, 27, 0.95));
+  border: 2px solid #f87171;
+  color: #fff;
+}
+
+/* Side Bet Pulsing Banner */
+.reaction-sidebet {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.95), rgba(217, 119, 6, 0.95));
+  border: 2px solid #fde68a;
+  color: #0b0e17;
+  animation: bannerEnter 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) both, pulseGlow 1.5s infinite alternate;
+}
+
+@keyframes pulseGlow {
+  from { box-shadow: 0 0 15px rgba(245, 158, 11, 0.4); }
+  to { box-shadow: 0 0 30px rgba(245, 158, 11, 0.9); }
+}
+
+.reaction-icon {
+  font-size: 2.2rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.reaction-text {
+  flex: 1;
+}
+
+.reaction-title {
+  font-size: 1.05rem;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  margin-bottom: 2px;
+}
+
+.reaction-subtitle {
+  font-size: 0.82rem;
+  opacity: 0.92;
+  line-height: 1.3;
+}
+
+/* Screen Shake Animation */
+.screen-shake {
+  animation: screenShake 0.6s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+@keyframes screenShake {
+  10%, 90% { transform: translate3d(-2px, 0, 0); }
+  20%, 80% { transform: translate3d(4px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-6px, 0, 0); }
+  40%, 60% { transform: translate3d(6px, 0, 0); }
+}
+

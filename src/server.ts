@@ -167,6 +167,7 @@ export type ClientMessage =
     }
   | { type: "FINALIZE_RACE" }
   | { type: "NEXT_RACE" }
+  | { type: "FORCE_START_RACE" }
   | { type: "RESTART_GAME" };
 
 export type ServerMessage =
@@ -369,6 +370,10 @@ export default class HotStreakServer implements Party.Server {
 
       case "NEXT_RACE":
         this.handleNextRace(sender, senderId);
+        break;
+
+      case "FORCE_START_RACE":
+        this.handleForceStartRace(sender, senderId);
         break;
 
       case "RESTART_GAME":
@@ -858,6 +863,17 @@ export default class HotStreakServer implements Party.Server {
       player.isReady = false;
     }
 
+    this.broadcastState();
+  }
+
+  private handleForceStartRace(sender: Party.Connection, senderId: string) {
+    if (!this.assertHost(sender, senderId)) return;
+    if (this.state.phase !== "BETTING") {
+      this.sendError(sender, "Can only advance to race during betting phase.");
+      return;
+    }
+
+    this.state.phase = "RACE_INPUT";
     this.broadcastState();
   }
 
